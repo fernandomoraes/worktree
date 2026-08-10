@@ -40,6 +40,18 @@ describe('loadConfig', () => {
     expect(config.repositories[0]?.hotfixBranch).toBeUndefined();
   });
 
+  it('ignores a leftover jira block instead of failing', async () => {
+    const path = await writeConfig({
+      repositories: [{ name: 'demo', path: '/tmp/demo' }],
+      jira: { baseUrl: 'https://acme.atlassian.net', user: 'you@acme.io' },
+    });
+
+    const { config } = await loadConfig(path);
+
+    expect(config).not.toHaveProperty('jira');
+    expect(config.repositories).toHaveLength(1);
+  });
+
   it('returns defaults when no config file exists at the default location', async () => {
     vi.stubEnv('XDG_CONFIG_HOME', join(tmpdir(), 'worktree-missing-config'));
 

@@ -13,15 +13,9 @@ const repositorySchema = z.object({
   hotfixBranch: z.string().min(1).optional(),
 });
 
-const jiraSchema = z.object({
-  baseUrl: z.url().optional(),
-  user: z.email().optional(),
-});
-
 const configSchema = z.object({
   worktreesPath: z.string().min(1).default('~/worktrees'),
   repositories: z.array(repositorySchema).default([]),
-  jira: jiraSchema.default({}),
 });
 
 export type RepositoryConfig = z.infer<typeof repositorySchema>;

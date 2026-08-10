@@ -140,11 +140,7 @@ at a path you asked for explicitly is an error, so typos never pass silently.
       "developmentBranch": "main",
       "hotfixBranch": "production"
     }
-  ],
-  "jira": {
-    "baseUrl": "https://your-org.atlassian.net",
-    "user": "you@example.com"
-  }
+  ]
 }
 ```
 
@@ -155,8 +151,9 @@ at a path you asked for explicitly is an error, so typos never pass silently.
 | `repositories[].path`              | yes      | —             | Path to the repository (`~` is expanded) |
 | `repositories[].developmentBranch` | no       | `main`        | Base branch for `--type feature`         |
 | `repositories[].hotfixBranch`      | no       | —             | Base branch for `--type hotfix`          |
-| `jira.baseUrl`                     | no       | —             | Jira site URL, used by `--ticket`        |
-| `jira.user`                        | no       | —             | Jira account email, used by `--ticket`   |
+
+Jira credentials are not part of this file — they come from the environment, so no secret is
+ever written to disk. See [Jira](#jira).
 
 Invalid config fails immediately and names the offending field, e.g.
 `Invalid config at …: repositories.0.path: Invalid input`.
@@ -177,15 +174,19 @@ requires either a configured `hotfixBranch` or an explicit `--base`.
 
 `--ticket ABC-123` fetches the issue summary and builds `feature/ABC-123-<slugified-summary>`.
 
-| Value    | Config         | Environment      |
-| -------- | -------------- | ---------------- |
-| Base URL | `jira.baseUrl` | `JIRA_BASE_URL`  |
-| User     | `jira.user`    | `JIRA_USER`      |
-| Token    | —              | `JIRA_API_TOKEN` |
+It reads your Atlassian credentials from the environment — all three are required:
 
-Environment variables win over config values. The API token is **only** read from the
-environment, so no secret ever lands in the config file — create one at
-<https://id.atlassian.com/manage-profile/security/api-tokens>.
+```bash
+export ATLASSIAN_URL=https://your-org.atlassian.net
+export ATLASSIAN_EMAIL=you@example.com
+export ATLASSIAN_API_TOKEN=…
+```
+
+Create a token at <https://id.atlassian.com/manage-profile/security/api-tokens>. Nothing Jira
+related is stored in the config file, so no secret is written to disk. `worktree config show`
+reports whether each variable is set, and prints `(set)` rather than the token itself.
+
+If one is missing, `--ticket` fails immediately and names the variable to set.
 
 Pass `--name` alongside `--ticket` to keep the issue key but write your own description:
 
@@ -201,9 +202,9 @@ worktree create --repo vela --ticket ABC-123 --name "login redirect"
 | `WORKTREE_CONFIG` | Config file path (overridden by `--config`)     |
 | `WORKTREE_DEBUG`  | Set to any value to print debug lines to stderr |
 | `XDG_CONFIG_HOME` | Base directory for the default config location  |
-| `JIRA_BASE_URL`   | Jira site URL                                   |
-| `JIRA_USER`       | Jira account email                              |
-| `JIRA_API_TOKEN`  | Jira API token (required for `--ticket`)        |
+
+Plus the three Atlassian variables required by `--ticket`: `ATLASSIAN_URL`,
+`ATLASSIAN_EMAIL`, and `ATLASSIAN_API_TOKEN`.
 
 ## Development
 

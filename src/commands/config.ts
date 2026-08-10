@@ -17,10 +17,6 @@ const TEMPLATE = {
       hotfixBranch: 'production',
     },
   ],
-  jira: {
-    baseUrl: 'https://your-org.atlassian.net',
-    user: 'you@example.com',
-  },
 };
 
 const path = defineCommand({
@@ -60,8 +56,11 @@ const show = defineCommand({
     writeLine(`config_path: ${loaded.path}`);
     writeLine(`config_exists: ${loaded.exists}`);
     writeLine(`worktrees_path: ${worktreesRoot(loaded.config)}`);
-    writeLine(`jira_base_url: ${loaded.config.jira.baseUrl ?? '(unset)'}`);
-    writeLine(`jira_user: ${loaded.config.jira.user ?? '(unset)'}`);
+    writeLine(`atlassian_url: ${process.env.ATLASSIAN_URL ?? '(unset)'}`);
+    writeLine(`atlassian_email: ${process.env.ATLASSIAN_EMAIL ?? '(unset)'}`);
+    writeLine(
+      `atlassian_api_token: ${process.env.ATLASSIAN_API_TOKEN ? '(set)' : '(unset)'}`
+    );
     writeLine(`repositories: ${loaded.config.repositories.length}`);
 
     for (const repository of loaded.config.repositories) {

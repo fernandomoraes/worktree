@@ -70,16 +70,14 @@ const resolveTargetRepository = async (
 };
 
 const resolveName = async ({
-  config,
   ticket,
   name,
 }: {
-  config: Config;
   ticket?: string;
   name?: string;
 }) => {
   if (ticket) {
-    const issue = await fetchIssue(config, ticket);
+    const issue = await fetchIssue(ticket);
     logger.debug(`fetched jira issue ${issue.key}: ${issue.summary}`);
     return {
       name: buildWorktreeName({
@@ -120,7 +118,7 @@ export const create = withExamples(
       ticket: {
         type: 'string',
         description:
-          'Jira issue key; its summary becomes the branch name (needs JIRA_API_TOKEN)',
+          'Jira issue key; its summary becomes the branch name (needs ATLASSIAN_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN)',
       },
       name: {
         type: 'string',
@@ -157,7 +155,6 @@ export const create = withExamples(
       const repository = await resolveTargetRepository(config, args.repo);
       const type = await resolveType(args.type);
       const { name } = await resolveName({
-        config,
         ticket: args.ticket,
         name: args.name,
       });
