@@ -70,11 +70,7 @@ selection can be captured directly:
 cd "$(worktree pick)"
 ```
 
-Worth putting in your shell profile:
-
-```bash
-wt() { cd "$(worktree pick)" || return; }
-```
+See [Shell integration](#shell-integration) for a `wt` function that wraps the whole CLI.
 
 | Flag              | Description                                 |
 | ----------------- | ------------------------------------------- |
@@ -214,6 +210,51 @@ ABC-15	To Do	Add rate limiting to the API
 | `worktree config show` | Print the resolved configuration (`--json` too) |
 | `worktree config init` | Write a starter config (`--force` to overwrite) |
 
+## Shell integration
+
+A shell cannot change its parent's directory, so `cd` has to happen in your shell rather than
+inside the CLI. Drop this in `~/.zshrc`:
+
+```zsh
+# wt — worktree, but it can move you into the result
+wt() {
+  case "$1" in
+    create|pick)
+      local dest
+      dest=$(command worktree "$@") || return
+      [[ -n "$dest" ]] || return 0
+      [[ -d "$dest" ]] || { printf '%s\n' "$dest"; return 0; }
+      cd -- "$dest"
+      ;;
+    *)
+      command worktree "$@"
+      ;;
+  esac
+}
+```
+
+Every subcommand still works — `wt list`, `wt clean`, `wt tickets`, `wt --help` — because only
+`create` and `pick` are intercepted. They are the two that print a single worktree path, which
+is the only output worth entering.
+
+| Command                 | Behaviour                                    |
+| ----------------------- | -------------------------------------------- |
+| `wt create …`           | creates the worktree, then moves you into it |
+| `wt create … --dry-run` | prints the path it would create, stays put   |
+| `wt pick` → Open        | moves you into the selected worktree         |
+| `wt pick` → Delete      | removes them, stays put                      |
+| `wt list`, `wt clean`   | ordinary output, still pipeable              |
+| anything that fails     | exit code propagates, no directory change    |
+
+Why each guard is there:
+
+- `local dest` keeps the variable out of your shell.
+- `|| return` propagates a failure instead of moving you somewhere on error.
+- `[[ -n "$dest" ]]` matters because `pick` prints nothing when you delete or cancel — without
+  it, `cd ""` would drop you in `$HOME`.
+- `[[ -d "$dest" ]]` covers `--dry-run`, whose path does not exist yet, so it prints instead.
+- `command` skips the function itself, avoiding recursion if you also alias `worktree`.
+
 ## Configuration
 
 The config file is **optional**. Its location is resolved in this order:
@@ -336,43 +377,6 @@ tests/              vitest suites, including real git integration tests
 Errors are handled once, in `cli.ts`. Subcommands throw with an actionable message and never
 catch or call `process.exit`; API clients map HTTP status codes to user-facing messages in one
 place.
-
-## Releasing
-
-CI runs lint, format, types, tests and the build on every push and pull request to `main`.
-
-Publishing is driven by tags. The workflow re-runs the whole gate, refuses to continue if the
-tag does not match `package.json`, smoke-tests the built binary, and publishes with
-[provenance](https://docs.npmjs.com/generating-provenance-statements/):
-
-```bash
-npm version patch      # or minor / major — commits and tags
-git push --follow-tags # tag push triggers the publish workflow
-```
-
-`workflow_dispatch` runs the same job with `dry-run` enabled by default, so the packaging can
-be checked without releasing.
-
-### One-time setup
-
-Publishing needs an npm [granular access token](https://docs.npmjs.com/about-access-tokens/)
-in the repository secrets as `NPM_TOKEN` (Settings → Secrets and variables → Actions). Legacy
-"automation" tokens were removed in November 2025; granular tokens are all that remain.
-
-Two settings on the token matter:
-
-- **Packages and scopes** — read/write on the `@moraes` scope. Scope rather than package,
-  because the package does not exist before the first publish.
-- **Bypass 2FA** — must be enabled. It defaults to off, and without it CI fails with
-  `EOTP: This operation requires a one-time password from your authenticator`.
-
-npm's [trusted publishing](https://docs.npmjs.com/trusted-publishers/) removes the long-lived
-token entirely and is the better end state, but it cannot perform a package's _first_ publish —
-npmjs.com requires the package to exist before a trusted publisher can be configured. So
-release the first version with a token, then switch: register this repo and
-`.github/workflows/publish.yml` as a trusted publisher and delete the secret. That switch also
-means adding an `npm install -g npm@latest` step, since OIDC needs npm >= 11.5.1 — newer than
-the npm bundled with Node 22.
 
 ## License
 
