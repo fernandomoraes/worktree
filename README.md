@@ -8,7 +8,7 @@ each worktree path.
 npm install -g @fernandomoraes/worktree
 ```
 
-Requires **Node.js >= 24** and **git** on `PATH`.
+Requires **Node.js >= 22** and **git** on `PATH`.
 
 ## Quick start
 

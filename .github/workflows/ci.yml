@@ -34,8 +34,14 @@ jobs:
         run: pnpm lint
 
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # the floor declared in engines, and the current active LTS
+        node: [22, 24]
 
     steps:
       - name: Checkout
@@ -47,7 +53,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version: ${{ matrix.node }}
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -61,3 +67,6 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Smoke test the built CLI
+        run: node dist/cli.js --version
