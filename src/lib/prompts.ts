@@ -8,12 +8,18 @@ import {
 } from '@clack/prompts';
 
 import { WORKTREE_TYPES, type WorktreeType } from '@/lib/branch-name.js';
+import { enableColors } from '@/utils/enable-colors.js';
 
 import type { Config } from '@/lib/config.js';
 import type { JiraIssue } from '@/lib/jira.js';
 import type { WorktreeAction } from '@/lib/worktree-actions.js';
 
 const RENDER_TO_STDERR = { output: process.stderr };
+
+const prompt = async <T>(render: () => Promise<T | symbol>): Promise<T> => {
+  enableColors();
+  return unwrap(await render());
+};
 
 const unwrap = <T>(value: T | symbol): T => {
   if (isCancel(value)) {
@@ -25,8 +31,8 @@ const unwrap = <T>(value: T | symbol): T => {
 };
 
 export const promptRepository = async (config: Config) =>
-  unwrap(
-    await select({
+  prompt(() =>
+    select({
       ...RENDER_TO_STDERR,
       message: 'Repository',
       options: config.repositories.map((repository) => ({
@@ -38,8 +44,8 @@ export const promptRepository = async (config: Config) =>
   );
 
 export const promptType = async () =>
-  unwrap(
-    await select<WorktreeType>({
+  prompt(() =>
+    select<WorktreeType>({
       ...RENDER_TO_STDERR,
       message: 'Type',
       options: WORKTREE_TYPES.map((type) => ({ value: type, label: type })),
@@ -51,8 +57,8 @@ export const NAME_SOURCES = ['ticket', 'free-form'] as const;
 export type NameSource = (typeof NAME_SOURCES)[number];
 
 export const promptNameSource = async () =>
-  unwrap(
-    await select<NameSource>({
+  prompt(() =>
+    select<NameSource>({
       ...RENDER_TO_STDERR,
       message: 'How should this worktree be named?',
       options: [
@@ -67,8 +73,8 @@ export const promptNameSource = async () =>
   );
 
 export const promptIssue = async (issues: JiraIssue[]) =>
-  unwrap(
-    await select({
+  prompt(() =>
+    select({
       ...RENDER_TO_STDERR,
       message: 'Ticket',
       options: issues.map((issue) => ({
@@ -80,8 +86,8 @@ export const promptIssue = async (issues: JiraIssue[]) =>
   );
 
 export const promptText = async (message: string) =>
-  unwrap(
-    await text({
+  prompt(() =>
+    text({
       ...RENDER_TO_STDERR,
       message,
       validate: (value) => (value?.trim() ? undefined : 'Required.'),
@@ -89,7 +95,7 @@ export const promptText = async (message: string) =>
   );
 
 export const promptConfirm = async (message: string) =>
-  unwrap(await confirm({ ...RENDER_TO_STDERR, message, initialValue: false }));
+  prompt(() => confirm({ ...RENDER_TO_STDERR, message, initialValue: false }));
 
 export type SelectionOption = {
   value: string;
@@ -101,8 +107,8 @@ export const promptSelection = async (
   message: string,
   options: SelectionOption[]
 ) =>
-  unwrap(
-    await multiselect({
+  prompt(() =>
+    multiselect({
       ...RENDER_TO_STDERR,
       message,
       options,
@@ -116,8 +122,8 @@ const ACTION_LABELS: Record<WorktreeAction, string> = {
 };
 
 export const promptAction = async (actions: WorktreeAction[]) =>
-  unwrap(
-    await select<WorktreeAction>({
+  prompt(() =>
+    select<WorktreeAction>({
       ...RENDER_TO_STDERR,
       message: 'Action',
       options: actions.map((action) => ({

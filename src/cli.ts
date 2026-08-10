@@ -20,6 +20,16 @@ const main = defineCommand({
   subCommands: { list, pick, create, clean, tickets, config },
 });
 
+// `worktree list | head` closes stdout early; that surfaces as an unhandled
+// EPIPE and a stack trace unless it is swallowed.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EPIPE') {
+    process.exit(0);
+  }
+
+  throw error;
+});
+
 const run = async () => {
   const rawArgs = process.argv.slice(2);
 

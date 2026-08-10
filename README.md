@@ -270,6 +270,9 @@ Why each guard is there:
 - `[[ -d "$dest" ]]` covers `--dry-run`, whose path does not exist yet, so it prints instead.
 - `command` skips the function itself, avoiding recursion if you also alias `worktree`.
 
+Prompts stay colourful inside the function even though `$( )` captures stdout. Set `NO_COLOR`
+to turn that off.
+
 ## Configuration
 
 The config file is **optional**. Its location is resolved in this order:
