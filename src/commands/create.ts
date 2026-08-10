@@ -18,8 +18,14 @@ import {
   remoteBranchExists,
   branchExists,
 } from '@/lib/git.js';
-import { fetchIssue } from '@/lib/jira.js';
-import { promptRepository, promptText, promptType } from '@/lib/prompts.js';
+import { fetchAssignedIssues, fetchIssue, type JiraIssue } from '@/lib/jira.js';
+import {
+  promptIssue,
+  promptNameSource,
+  promptRepository,
+  promptText,
+  promptType,
+} from '@/lib/prompts.js';
 import {
   baseBranchFor,
   resolveRepository,
@@ -69,37 +75,66 @@ const resolveTargetRepository = async (
   );
 };
 
+const nameFromIssue = (issue: JiraIssue, override?: string) => {
+  logger.debug(`using jira issue ${issue.key}: ${issue.summary}`);
+
+  return buildWorktreeName({
+    ticket: issue.key,
+    description: override ?? issue.summary,
+  });
+};
+
+const pickIssue = async (currentSprintOnly: boolean) => {
+  const issues = await fetchAssignedIssues({ currentSprintOnly });
+
+  if (issues.length === 0) {
+    throw new Error(
+      currentSprintOnly
+        ? 'No open issues assigned to you in the current sprint.\n  Re-run with --all-issues to list every open issue assigned to you.'
+        : 'No open issues assigned to you.\n  Use --name to create a worktree without a ticket.'
+    );
+  }
+
+  const key = await promptIssue(issues);
+  const issue = issues.find((candidate) => candidate.key === key);
+
+  if (!issue) {
+    throw new Error(`Selected issue ${key} is no longer in the list.`);
+  }
+
+  return issue;
+};
+
 const resolveName = async ({
   ticket,
   name,
+  allIssues,
 }: {
   ticket?: string;
   name?: string;
+  allIssues: boolean;
 }) => {
   if (ticket) {
-    const issue = await fetchIssue(ticket);
-    logger.debug(`fetched jira issue ${issue.key}: ${issue.summary}`);
-    return {
-      name: buildWorktreeName({
-        ticket: issue.key,
-        description: name ?? issue.summary,
-      }),
-      summary: issue.summary,
-    };
+    return nameFromIssue(await fetchIssue(ticket), name);
   }
 
   if (name) {
-    return { name: buildWorktreeName({ description: name }), summary: name };
+    return buildWorktreeName({ description: name });
   }
 
-  if (isInteractive()) {
-    const value = await promptText('Worktree name');
-    return { name: buildWorktreeName({ description: value }), summary: value };
+  if (!isInteractive()) {
+    throw new Error(
+      'No ticket or name provided.\n  worktree create --repo <name> --ticket ABC-123\n  worktree create --repo <name> --name "fix login redirect"\n  Discover your tickets with: worktree tickets'
+    );
   }
 
-  throw new Error(
-    'No ticket or name provided.\n  worktree create --repo <name> --ticket ABC-123\n  worktree create --repo <name> --name "fix login redirect"'
-  );
+  if ((await promptNameSource()) === 'free-form') {
+    return buildWorktreeName({
+      description: await promptText('Worktree name'),
+    });
+  }
+
+  return nameFromIssue(await pickIssue(!allIssues));
 };
 
 export const create = withExamples(
@@ -118,7 +153,13 @@ export const create = withExamples(
       ticket: {
         type: 'string',
         description:
-          'Jira issue key; its summary becomes the branch name (needs ATLASSIAN_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN)',
+          'Jira issue key; skip it to pick from your current sprint (use `worktree tickets` to discover keys)',
+      },
+      'all-issues': {
+        type: 'boolean',
+        description:
+          'When picking a ticket, list every open issue assigned to you, not just the current sprint',
+        default: false,
       },
       name: {
         type: 'string',
@@ -154,9 +195,10 @@ export const create = withExamples(
       const { config } = await loadConfig(args.config);
       const repository = await resolveTargetRepository(config, args.repo);
       const type = await resolveType(args.type);
-      const { name } = await resolveName({
+      const name = await resolveName({
         ticket: args.ticket,
         name: args.name,
+        allIssues: args['all-issues'],
       });
 
       const branch = buildBranchName({ type, name });
@@ -209,9 +251,10 @@ export const create = withExamples(
     },
   }),
   [
-    'worktree create --repo vela --ticket ABC-123',
-    'worktree create --repo vela --ticket ABC-123 --type hotfix',
+    'worktree create --repo vela                    # pick a ticket from your current sprint',
+    'worktree create --repo vela --ticket ABC-123   # skip the picker',
     'worktree create --repo vela --name "fix login redirect"',
+    'worktree create --repo vela --ticket ABC-123 --type hotfix',
     'worktree create --repo ./path/to/repo --name spike --dry-run',
   ]
 );

@@ -14,7 +14,9 @@ Requires **Node.js >= 24** and **git** on `PATH`.
 
 ```bash
 worktree config init                          # scaffold ~/.config/worktree/config.json
-worktree create --repo vela --ticket ABC-123  # branch name comes from the Jira summary
+worktree create --repo vela                   # pick a ticket from your current sprint
+worktree create --repo vela --ticket ABC-123  # or name it from a specific ticket
+worktree tickets                              # your sprint tickets, for scripts
 worktree list                                 # see what is open
 worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect
 ```
@@ -56,13 +58,31 @@ Creates a worktree at `<worktreesPath>/<repository>/<name>` on a new branch.
 | Flag              | Description                                                              |
 | ----------------- | ------------------------------------------------------------------------ |
 | `--repo <ref>`    | Repository name from config, or a path to a git repository               |
-| `--ticket <key>`  | Jira issue key; its summary becomes the branch name                      |
+| `--ticket <key>`  | Jira issue key; omit it to pick from your current sprint                 |
+| `--all-issues`    | Widen the picker to every open issue assigned to you                     |
 | `--name <text>`   | Free-form name; overrides the Jira summary when combined with `--ticket` |
 | `--type <type>`   | `feature` (default) or `hotfix` — selects the base branch                |
 | `--base <branch>` | Start from an explicit branch instead of the configured one              |
 | `--no-fetch`      | Skip fetching the base branch from `origin`                              |
 | `--dry-run`       | Print what would be created without touching the filesystem              |
 | `--config <path>` | Use a specific config file                                               |
+
+Run it with no naming flags and it asks how to name the worktree:
+
+```
+$ worktree create --repo vela
+◇  How should this worktree be named?
+│  From a Jira ticket   (pick from your current sprint)
+│  Free form            (type a name)
+│
+◇  Ticket
+│  ABC-12  Fix login redirect loop      Bug · In Progress
+│  ABC-15  Add rate limiting to the API Story · To Do
+```
+
+The ticket list is the issues **assigned to you in the current sprint**
+(`assignee = currentUser() AND resolution = Unresolved AND sprint in openSprints()`). Add
+`--all-issues` to widen it to every open issue assigned to you, regardless of sprint.
 
 `--type feature` branches from the repository's `developmentBranch`; `--type hotfix` branches
 from its `hotfixBranch`. The base branch is fetched from `origin` first unless `--no-fetch` is
@@ -110,6 +130,24 @@ when `--keep-claude-project` is set.
 
 With no `--branch` and no `--all`, an interactive terminal gets a multi-select of open
 worktrees; a non-interactive one gets an error telling you which flag to pass.
+
+### `worktree tickets`
+
+Lists the Jira issues assigned to you in the current sprint as `key<TAB>status<TAB>summary`.
+This is the non-interactive counterpart to the picker, so scripts and agents can discover keys
+to feed to `--ticket`.
+
+| Flag           | Description                                                   |
+| -------------- | ------------------------------------------------------------- |
+| `--all-issues` | Every open issue assigned to you, not just the current sprint |
+| `--limit <n>`  | Maximum issues to return (default: 50)                        |
+| `--json`       | Emit JSON with `key`, `summary`, `type`, and `status`         |
+
+```
+$ worktree tickets
+ABC-12	In Progress	Fix login redirect loop
+ABC-15	To Do	Add rate limiting to the API
+```
 
 ### `worktree config`
 
@@ -172,7 +210,12 @@ requires either a configured `hotfixBranch` or an explicit `--base`.
 
 ## Jira
 
-`--ticket ABC-123` fetches the issue summary and builds `feature/ABC-123-<slugified-summary>`.
+Jira is used to turn a ticket into a branch name — either by picking from your current sprint
+or by passing `--ticket ABC-123` directly. Either way the result is
+`feature/ABC-123-<slugified-summary>`. It is read-only: nothing is ever written back to Jira.
+
+Queries go to `GET /rest/api/3/search/jql`, the current search endpoint (`/rest/api/3/search`
+was removed from Jira Cloud).
 
 It reads your Atlassian credentials from the environment — all three are required:
 
@@ -194,6 +237,9 @@ Pass `--name` alongside `--ticket` to keep the issue key but write your own desc
 worktree create --repo vela --ticket ABC-123 --name "login redirect"
 # -> feature/ABC-123-login-redirect
 ```
+
+If your projects have no sprint field, the sprint query fails with a message telling you to
+re-run with `--all-issues`.
 
 ## Environment variables
 
