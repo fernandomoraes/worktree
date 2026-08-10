@@ -36,6 +36,8 @@ The CLI is built for humans and agents at the same time:
   happens to be attached to.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
+- **Offline.** Nothing but `tickets` and `create --ticket` touches the network, so managing
+  worktrees never waits on a VPN.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
   refuse to discard uncommitted work unless you pass `--force`.
 - **Exit code 0 on success, 1 on failure**, with the reason on stderr and a suggested fix.
@@ -96,7 +98,6 @@ Creates a worktree at `<worktreesPath>/<repository>/<name>` on a new branch.
 | `--name <text>`   | Free-form name; overrides the Jira summary when combined with `--ticket` |
 | `--type <type>`   | `feature` (default) or `hotfix` — selects the base branch                |
 | `--base <branch>` | Start from an explicit branch instead of the configured one              |
-| `--no-fetch`      | Skip fetching the base branch from `origin`                              |
 | `--dry-run`       | Print what would be created without touching the filesystem              |
 | `--verbose`       | Also report repository, branch and base on stderr                        |
 | `--config <path>` | Use a specific config file                                               |
@@ -119,8 +120,22 @@ The ticket list is the issues **assigned to you in the current sprint**
 `--all-issues` to widen it to every open issue assigned to you, regardless of sprint.
 
 `--type feature` branches from the repository's `developmentBranch`; `--type hotfix` branches
-from its `hotfixBranch`. The base branch is fetched from `origin` first unless `--no-fetch` is
-set, so new worktrees start from the current remote state.
+from its `hotfixBranch`. Override either with `--base <branch>`.
+
+**Worktrees are cut from local branches only.** `create` never contacts the remote — no fetch,
+no `ls-remote` — so it works the same on a plane as on a VPN. If the base branch does not exist
+locally, it fails and tells you rather than reaching for `origin/<branch>`:
+
+```
+$ worktree create --repo vela --type hotfix
+Error: Branch "production" does not exist locally in vela (/Users/you/Workspaces/vela).
+  Worktrees are created from local branches only.
+  Fetch or create it first, or pass --base <branch>.
+  See what you have: git -C /Users/you/Workspaces/vela branch
+```
+
+Update your base branch yourself when you want the latest, e.g.
+`git -C <repo> pull --ff-only origin main`, then create.
 
 It prints the created path on stdout, so it composes with `cd`:
 

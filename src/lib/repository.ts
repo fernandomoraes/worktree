@@ -1,7 +1,7 @@
 import { basename } from 'node:path';
 
 import { findRepository, type Config } from '@/lib/config.js';
-import { defaultBranch, isGitRepository } from '@/lib/git.js';
+import { branchExists, defaultBranch, isGitRepository } from '@/lib/git.js';
 import { expandHome } from '@/utils/expand-home.js';
 
 import type { WorktreeType } from '@/lib/branch-name.js';
@@ -91,4 +91,24 @@ export const baseBranchFor = (
   }
 
   return repository.developmentBranch;
+};
+
+/**
+ * Worktrees are always cut from a local branch: talking to the remote can mean
+ * waiting on a VPN, so `create` never reaches the network.
+ */
+export const assertLocalBranch = async (
+  repository: ResolvedRepository,
+  branch: string
+) => {
+  if (await branchExists(repository.path, branch)) {
+    return branch;
+  }
+
+  throw new Error(
+    `Branch "${branch}" does not exist locally in ${repository.name} (${repository.path}).\n` +
+      `  Worktrees are created from local branches only.\n` +
+      `  Fetch or create it first, or pass --base <branch>.\n` +
+      `  See what you have: git -C ${repository.path} branch`
+  );
 };

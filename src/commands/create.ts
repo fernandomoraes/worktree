@@ -12,12 +12,7 @@ import {
 } from '@/lib/branch-name.js';
 import { loadConfig, worktreesRoot, type Config } from '@/lib/config.js';
 import { withExamples } from '@/lib/examples.js';
-import {
-  addWorktree,
-  fetchRemote,
-  remoteBranchExists,
-  branchExists,
-} from '@/lib/git.js';
+import { addWorktree, branchExists } from '@/lib/git.js';
 import { fetchAssignedIssues, fetchIssue, type JiraIssue } from '@/lib/jira.js';
 import {
   promptIssue,
@@ -27,6 +22,7 @@ import {
   promptType,
 } from '@/lib/prompts.js';
 import {
+  assertLocalBranch,
   baseBranchFor,
   resolveRepository,
   type ResolvedRepository,
@@ -176,11 +172,6 @@ export const create = withExamples(
         description:
           'Branch to start from (default: the repository development or hotfix branch)',
       },
-      'no-fetch': {
-        type: 'boolean',
-        description: 'Skip fetching the base branch from origin',
-        default: false,
-      },
       'dry-run': {
         type: 'boolean',
         description:
@@ -235,16 +226,10 @@ export const create = withExamples(
         return;
       }
 
-      if (
-        !args['no-fetch'] &&
-        (await remoteBranchExists(repository.path, base))
-      ) {
-        await fetchRemote(repository.path, base);
+      // Only the start point needs to exist; reusing a branch ignores it.
+      if (!(await branchExists(repository.path, branch))) {
+        await assertLocalBranch(repository, base);
       }
-
-      const startPoint = (await branchExists(repository.path, base))
-        ? base
-        : `origin/${base}`;
 
       await mkdir(dirname(worktreePath), { recursive: true });
 
@@ -252,14 +237,14 @@ export const create = withExamples(
         repositoryPath: repository.path,
         worktreePath,
         branch,
-        startPoint,
+        startPoint: base,
       });
 
       report(
         reusedBranch
           ? 'created worktree (existing branch)'
           : 'created worktree',
-        startPoint
+        base
       );
     },
   }),

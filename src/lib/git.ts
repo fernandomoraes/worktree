@@ -92,27 +92,6 @@ export const branchExists = async (
   }
 };
 
-export const remoteBranchExists = async (
-  repositoryPath: string,
-  branch: string
-): Promise<boolean> => {
-  try {
-    const stdout = await git(repositoryPath, [
-      'ls-remote',
-      '--heads',
-      'origin',
-      branch,
-    ]);
-    return stdout.trim().length > 0;
-  } catch {
-    return false;
-  }
-};
-
-export const fetchRemote = async (repositoryPath: string, branch: string) => {
-  await git(repositoryPath, ['fetch', 'origin', branch]);
-};
-
 export const defaultBranch = async (repositoryPath: string) => {
   try {
     const stdout = await git(repositoryPath, [
