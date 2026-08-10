@@ -362,14 +362,24 @@ be checked without releasing.
 
 ### One-time setup
 
-Publishing needs an npm **automation** token in the repository secrets as `NPM_TOKEN`
-(Settings → Secrets and variables → Actions).
+Publishing needs an npm [granular access token](https://docs.npmjs.com/about-access-tokens/)
+in the repository secrets as `NPM_TOKEN` (Settings → Secrets and variables → Actions). Legacy
+"automation" tokens were removed in November 2025; granular tokens are all that remain.
 
-npm's [trusted publishing](https://docs.npmjs.com/trusted-publishers/) would remove that
-long-lived token, but it cannot perform a package's _first_ publish — npmjs.com requires the
-package to exist before a trusted publisher can be configured. So publish `0.1.0` with the
-token, then optionally switch: add this repo and `.github/workflows/publish.yml` as a trusted
-publisher on npm and delete the secret.
+Two settings on the token matter:
+
+- **Packages and scopes** — read/write on the `@moraes` scope. Scope rather than package,
+  because the package does not exist before the first publish.
+- **Bypass 2FA** — must be enabled. It defaults to off, and without it CI fails with
+  `EOTP: This operation requires a one-time password from your authenticator`.
+
+npm's [trusted publishing](https://docs.npmjs.com/trusted-publishers/) removes the long-lived
+token entirely and is the better end state, but it cannot perform a package's _first_ publish —
+npmjs.com requires the package to exist before a trusted publisher can be configured. So
+release the first version with a token, then switch: register this repo and
+`.github/workflows/publish.yml` as a trusted publisher and delete the secret. That switch also
+means adding an `npm install -g npm@latest` step, since OIDC needs npm >= 11.5.1 — newer than
+the npm bundled with Node 22.
 
 ## License
 
