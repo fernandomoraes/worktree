@@ -192,6 +192,14 @@ removed: 1                                              <- stderr
 `claude_project` reports the removed path, `none` if there was nothing to remove, or `kept`
 when `--keep-claude-project` is set.
 
+The directory is looked up under `$CLAUDE_CONFIG_DIR` when that is set, falling back to
+`~/.claude`, matching how Claude Code resolves its own config root.
+
+Only `<config>/projects/<slug>` is removed — the session transcripts. Claude Code keeps other
+per-project state elsewhere that this tool deliberately leaves alone: the entry under
+`projects` in `~/.claude.json` (permissions, MCP servers, trust flags) and prompt history in
+`~/.claude/history.jsonl`.
+
 With no `--branch` and no `--all`, an interactive terminal gets a multi-select of open
 worktrees; a non-interactive one gets an error telling you which flag to pass.
 

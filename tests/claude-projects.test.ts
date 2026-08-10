@@ -17,7 +17,35 @@ describe('claudeProjectSlug', () => {
 });
 
 describe('claudeProjectPath', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('resolves under ~/.claude/projects', () => {
+    expect(claudeProjectPath('/tmp/demo')).toBe(
+      `${homedir()}/.claude/projects/-tmp-demo`
+    );
+  });
+
+  it('follows CLAUDE_CONFIG_DIR when Claude Code is relocated', () => {
+    vi.stubEnv('CLAUDE_CONFIG_DIR', '/opt/claude-config');
+
+    expect(claudeProjectPath('/tmp/demo')).toBe(
+      '/opt/claude-config/projects/-tmp-demo'
+    );
+  });
+
+  it('expands ~ inside CLAUDE_CONFIG_DIR', () => {
+    vi.stubEnv('CLAUDE_CONFIG_DIR', '~/somewhere/claude');
+
+    expect(claudeProjectPath('/tmp/demo')).toBe(
+      `${homedir()}/somewhere/claude/projects/-tmp-demo`
+    );
+  });
+
+  it('falls back to the default when CLAUDE_CONFIG_DIR is empty', () => {
+    vi.stubEnv('CLAUDE_CONFIG_DIR', '');
+
     expect(claudeProjectPath('/tmp/demo')).toBe(
       `${homedir()}/.claude/projects/-tmp-demo`
     );
