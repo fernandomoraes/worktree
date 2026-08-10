@@ -17,22 +17,30 @@ export const assertWorktreeType = (value: string): WorktreeType => {
   return value;
 };
 
+export type WorktreeName = {
+  /** Full name, ticket key plus summary — used for the branch. */
+  branch: string;
+  /** Short name — used for the directory on disk. */
+  directory: string;
+};
+
 export const buildWorktreeName = ({
   ticket,
   description,
 }: {
   ticket?: string;
   description?: string;
-}) => {
-  const name = [ticket?.toUpperCase(), slugify(description ?? '')]
-    .filter(Boolean)
-    .join('-');
+}): WorktreeName => {
+  const key = ticket?.toUpperCase();
+  const branch = [key, slugify(description ?? '')].filter(Boolean).join('-');
 
-  if (!name) {
+  if (!branch) {
     throw new Error('Cannot derive a worktree name from empty input.');
   }
 
-  return name;
+  // A Jira summary makes for a long path, and the key alone already identifies
+  // the worktree; the branch keeps the summary for readability.
+  return { branch, directory: key ?? branch };
 };
 
 export const buildBranchName = ({

@@ -90,6 +90,11 @@ otherwise, pointing you at `worktree list`.
 
 Creates a worktree at `<worktreesPath>/<repository>/<name>` on a new branch.
 
+With `--ticket`, `<name>` is just the issue key — the Jira summary would make for a long path,
+and the key alone already says which worktree it is. The branch still carries the summary:
+`~/worktrees/vela/ABC-123` on `feature/ABC-123-fix-login-redirect`. Without a ticket, directory
+and branch share the same slugified name.
+
 | Flag              | Description                                                              |
 | ----------------- | ------------------------------------------------------------------------ |
 | `--repo <ref>`    | Repository name from config, or a path to a git repository               |
@@ -141,7 +146,7 @@ It prints the created path on stdout, so it composes with `cd`:
 
 ```bash
 $ worktree create --repo vela --ticket ABC-123
-/Users/you/worktrees/vela/ABC-123-fix-login-redirect
+/Users/you/worktrees/vela/ABC-123
 
 $ cd "$(worktree create --repo vela --ticket ABC-123)"
 ```
@@ -155,7 +160,7 @@ created worktree                                        <- stderr
 repository: vela                                        <- stderr
 branch: feature/ABC-123-fix-login-redirect              <- stderr
 base: origin/main                                       <- stderr
-/Users/you/worktrees/vela/ABC-123-fix-login-redirect    <- stdout
+/Users/you/worktrees/vela/ABC-123                       <- stdout
 ```
 
 If the branch already exists locally, it is reused rather than recreated. Re-running the same

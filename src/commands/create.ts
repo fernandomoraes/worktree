@@ -8,6 +8,7 @@ import {
   buildBranchName,
   buildWorktreeName,
   WORKTREE_TYPES,
+  type WorktreeName,
   type WorktreeType,
 } from '@/lib/branch-name.js';
 import { loadConfig, worktreesRoot, type Config } from '@/lib/config.js';
@@ -110,7 +111,7 @@ const resolveName = async ({
   ticket?: string;
   name?: string;
   allIssues: boolean;
-}) => {
+}): Promise<WorktreeName> => {
   if (ticket) {
     return nameFromIssue(await fetchIssue(ticket), name);
   }
@@ -199,9 +200,13 @@ export const create = withExamples(
         allIssues: args['all-issues'],
       });
 
-      const branch = buildBranchName({ type, name });
+      const branch = buildBranchName({ type, name: name.branch });
       const base = args.base ?? baseBranchFor(repository, type);
-      const worktreePath = join(worktreesRoot(config), repository.name, name);
+      const worktreePath = join(
+        worktreesRoot(config),
+        repository.name,
+        name.directory
+      );
 
       // stdout carries the path and nothing else, so `cd "$(...)"` works in
       // either mode; --verbose adds a summary alongside it, on stderr.

@@ -10,22 +10,37 @@ describe('buildWorktreeName', () => {
       buildWorktreeName({
         ticket: 'abc-123',
         description: 'Fix Login Redirect',
-      })
+      }).branch
     ).toBe('ABC-123-fix-login-redirect');
+  });
+
+  it('keeps the directory down to the ticket key', () => {
+    expect(
+      buildWorktreeName({
+        ticket: 'abc-123',
+        description: 'Fix the login redirect when the session has expired',
+      }).directory
+    ).toBe('ABC-123');
   });
 
   it('strips accents and punctuation from the description', () => {
     expect(
-      buildWorktreeName({ description: 'Corrigir integração (v2)!' })
+      buildWorktreeName({ description: 'Corrigir integração (v2)!' }).branch
     ).toBe('corrigir-integracao-v2');
   });
 
   it('works without a ticket', () => {
-    expect(buildWorktreeName({ description: 'spike' })).toBe('spike');
+    expect(buildWorktreeName({ description: 'spike' })).toEqual({
+      branch: 'spike',
+      directory: 'spike',
+    });
   });
 
   it('works without a description', () => {
-    expect(buildWorktreeName({ ticket: 'ABC-1' })).toBe('ABC-1');
+    expect(buildWorktreeName({ ticket: 'ABC-1' })).toEqual({
+      branch: 'ABC-1',
+      directory: 'ABC-1',
+    });
   });
 
   it('throws when nothing usable is provided', () => {
