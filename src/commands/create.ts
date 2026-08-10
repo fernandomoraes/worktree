@@ -1,0 +1,220 @@
+import { mkdir, stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+
+import { defineCommand } from 'citty';
+
+import {
+  assertWorktreeType,
+  buildBranchName,
+  buildWorktreeName,
+  WORKTREE_TYPES,
+  type WorktreeType,
+} from '@/lib/branch-name.js';
+import { loadConfig, worktreesRoot, type Config } from '@/lib/config.js';
+import { withExamples } from '@/lib/examples.js';
+import {
+  addWorktree,
+  fetchRemote,
+  remoteBranchExists,
+  branchExists,
+} from '@/lib/git.js';
+import { fetchIssue } from '@/lib/jira.js';
+import { promptRepository, promptText, promptType } from '@/lib/prompts.js';
+import {
+  baseBranchFor,
+  resolveRepository,
+  type ResolvedRepository,
+} from '@/lib/repository.js';
+import { isInteractive } from '@/utils/is-interactive.js';
+import { logger } from '@/utils/logger.js';
+import { writeLine } from '@/utils/write-line.js';
+
+const pathExists = async (path: string) => {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveType = async (
+  value: string | undefined
+): Promise<WorktreeType> => {
+  if (value) {
+    return assertWorktreeType(value);
+  }
+
+  if (isInteractive()) {
+    return promptType();
+  }
+
+  return 'feature';
+};
+
+const resolveTargetRepository = async (
+  config: Config,
+  reference: string | undefined
+): Promise<ResolvedRepository> => {
+  if (reference) {
+    return resolveRepository(config, reference);
+  }
+
+  if (isInteractive() && config.repositories.length > 0) {
+    return resolveRepository(config, await promptRepository(config));
+  }
+
+  throw new Error(
+    'No repository specified.\n  worktree create --repo <name|path> --ticket <KEY>\n  Configured repositories: worktree config show'
+  );
+};
+
+const resolveName = async ({
+  config,
+  ticket,
+  name,
+}: {
+  config: Config;
+  ticket?: string;
+  name?: string;
+}) => {
+  if (ticket) {
+    const issue = await fetchIssue(config, ticket);
+    logger.debug(`fetched jira issue ${issue.key}: ${issue.summary}`);
+    return {
+      name: buildWorktreeName({
+        ticket: issue.key,
+        description: name ?? issue.summary,
+      }),
+      summary: issue.summary,
+    };
+  }
+
+  if (name) {
+    return { name: buildWorktreeName({ description: name }), summary: name };
+  }
+
+  if (isInteractive()) {
+    const value = await promptText('Worktree name');
+    return { name: buildWorktreeName({ description: value }), summary: value };
+  }
+
+  throw new Error(
+    'No ticket or name provided.\n  worktree create --repo <name> --ticket ABC-123\n  worktree create --repo <name> --name "fix login redirect"'
+  );
+};
+
+export const create = withExamples(
+  defineCommand({
+    meta: {
+      name: 'create',
+      description:
+        'Create a git worktree from a Jira ticket or a free-form name',
+    },
+    args: {
+      repo: {
+        type: 'string',
+        description:
+          'Repository name from config, or a path to a git repository',
+      },
+      ticket: {
+        type: 'string',
+        description:
+          'Jira issue key; its summary becomes the branch name (needs JIRA_API_TOKEN)',
+      },
+      name: {
+        type: 'string',
+        description:
+          'Free-form name; overrides the Jira summary when --ticket is also given',
+      },
+      type: {
+        type: 'string',
+        description: `Worktree type: ${WORKTREE_TYPES.join(' or ')} (default: feature)`,
+      },
+      base: {
+        type: 'string',
+        description:
+          'Branch to start from (default: the repository development or hotfix branch)',
+      },
+      'no-fetch': {
+        type: 'boolean',
+        description: 'Skip fetching the base branch from origin',
+        default: false,
+      },
+      'dry-run': {
+        type: 'boolean',
+        description:
+          'Print what would be created without touching the filesystem',
+        default: false,
+      },
+      config: {
+        type: 'string',
+        description: 'Path to the config file',
+      },
+    },
+    async run({ args }) {
+      const { config } = await loadConfig(args.config);
+      const repository = await resolveTargetRepository(config, args.repo);
+      const type = await resolveType(args.type);
+      const { name } = await resolveName({
+        config,
+        ticket: args.ticket,
+        name: args.name,
+      });
+
+      const branch = buildBranchName({ type, name });
+      const base = args.base ?? baseBranchFor(repository, type);
+      const worktreePath = join(worktreesRoot(config), repository.name, name);
+
+      if (args['dry-run']) {
+        writeLine('would create worktree');
+        writeLine(`repository: ${repository.name}`);
+        writeLine(`branch: ${branch}`);
+        writeLine(`base: ${base}`);
+        writeLine(`path: ${worktreePath}`);
+        writeLine('no changes made');
+        return;
+      }
+
+      if (await pathExists(worktreePath)) {
+        writeLine('worktree already exists');
+        writeLine(`repository: ${repository.name}`);
+        writeLine(`branch: ${branch}`);
+        writeLine(`path: ${worktreePath}`);
+        return;
+      }
+
+      if (
+        !args['no-fetch'] &&
+        (await remoteBranchExists(repository.path, base))
+      ) {
+        await fetchRemote(repository.path, base);
+      }
+
+      const startPoint = (await branchExists(repository.path, base))
+        ? base
+        : `origin/${base}`;
+
+      await mkdir(dirname(worktreePath), { recursive: true });
+
+      const { reusedBranch } = await addWorktree({
+        repositoryPath: repository.path,
+        worktreePath,
+        branch,
+        startPoint,
+      });
+
+      writeLine('created worktree');
+      writeLine(`repository: ${repository.name}`);
+      writeLine(`branch: ${branch}${reusedBranch ? ' (existing)' : ''}`);
+      writeLine(`base: ${startPoint}`);
+      writeLine(`path: ${worktreePath}`);
+    },
+  }),
+  [
+    'worktree create --repo vela --ticket ABC-123',
+    'worktree create --repo vela --ticket ABC-123 --type hotfix',
+    'worktree create --repo vela --name "fix login redirect"',
+    'worktree create --repo ./path/to/repo --name spike --dry-run',
+  ]
+);

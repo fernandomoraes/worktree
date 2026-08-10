@@ -1,0 +1,72 @@
+{
+  "name": "@fernandomoraes/worktree",
+  "version": "0.1.0",
+  "description": "CLI to create, list and clean git worktrees for tickets and hotfixes",
+  "keywords": [
+    "git",
+    "worktree",
+    "cli",
+    "jira",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "worktree": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "tsx --tsconfig tsconfig.build.json src/cli.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,ts,tsx,md,json,css}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,tsx,md,json,css}\"",
+    "check-types": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "package.json": "prettier --write",
+    "*.{js,ts,tsx}": [
+      "eslint --flag v10_config_lookup_from_file --fix",
+      "prettier --write"
+    ],
+    "*.{md,json,css}": "prettier --write"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tsconfig/node24": "24.0.4",
+    "@types/node": "25.5.0",
+    "eslint": "10.1.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-import-resolver-typescript": "4.4.4",
+    "eslint-plugin-import-x": "4.16.2",
+    "eslint-plugin-unicorn": "63.0.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "prettier": "3.8.1",
+    "tsc-alias": "1.8.16",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.57.1",
+    "vite-tsconfig-paths": "6.1.1",
+    "vitest": "4.1.0"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.7.0",
+    "citty": "0.2.2",
+    "zod": "4.4.3"
+  }
+}
