@@ -1,11 +1,11 @@
-# @fernandomoraes/worktree
+# @moraes/worktree
 
 A CLI for the git worktree loop: create one per ticket or hotfix, list what you have open, and
 clean them up — including the `~/.claude/projects` directory that Claude Code leaves behind for
 each worktree path.
 
 ```bash
-npm install -g @fernandomoraes/worktree
+npm install -g @moraes/worktree
 ```
 
 Requires **Node.js >= 22** and **git** on `PATH`.
