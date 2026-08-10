@@ -34,6 +34,7 @@ import {
 import { isInteractive } from '@/utils/is-interactive.js';
 import { logger } from '@/utils/logger.js';
 import { writeLine } from '@/utils/write-line.js';
+import { writeStderrLine } from '@/utils/write-stderr-line.js';
 
 const pathExists = async (path: string) => {
   try {
@@ -211,17 +212,17 @@ export const create = withExamples(
       const base = args.base ?? baseBranchFor(repository, type);
       const worktreePath = join(worktreesRoot(config), repository.name, name);
 
+      // stdout carries the path and nothing else, so `cd "$(...)"` works in
+      // either mode; --human adds a summary alongside it, on stderr.
       const report = (status: string, base: string) => {
-        if (!args.human) {
-          writeLine(worktreePath);
-          return;
+        if (args.human) {
+          writeStderrLine(status);
+          writeStderrLine(`repository: ${repository.name}`);
+          writeStderrLine(`branch: ${branch}`);
+          writeStderrLine(`base: ${base}`);
         }
 
-        writeLine(status);
-        writeLine(`repository: ${repository.name}`);
-        writeLine(`branch: ${branch}`);
-        writeLine(`base: ${base}`);
-        writeLine(`path: ${worktreePath}`);
+        writeLine(worktreePath);
       };
 
       if (args['dry-run']) {

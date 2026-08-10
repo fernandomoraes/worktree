@@ -9,6 +9,7 @@ import {
 } from '@/lib/worktrees.js';
 import { isInteractive } from '@/utils/is-interactive.js';
 import { writeLine } from '@/utils/write-line.js';
+import { writeStderrLine } from '@/utils/write-stderr-line.js';
 
 type Candidate = WorktreeRow;
 
@@ -129,7 +130,7 @@ export const clean = withExamples(
 
       if (candidates.length === 0) {
         if (args.human) {
-          writeLine('no worktrees to clean');
+          writeStderrLine('no worktrees to clean');
         }
         return;
       }
@@ -142,26 +143,28 @@ export const clean = withExamples(
 
       if (selected.length === 0) {
         if (args.human) {
-          writeLine('no worktrees to clean');
+          writeStderrLine('no worktrees to clean');
         }
         return;
       }
 
       if (args['dry-run']) {
-        if (!args.human) {
-          for (const candidate of selected) {
-            writeLine(candidate.path);
-          }
-          return;
+        if (args.human) {
+          writeStderrLine(`would remove ${selected.length} worktree(s)`);
         }
 
-        writeLine(`would remove ${selected.length} worktree(s)`);
         for (const candidate of selected) {
-          writeLine(
-            [candidate.repository, candidate.branch, candidate.path].join('\t')
-          );
+          if (args.human) {
+            writeStderrLine(`${candidate.repository}  ${candidate.branch}`);
+          }
+
+          writeLine(candidate.path);
         }
-        writeLine('no changes made');
+
+        if (args.human) {
+          writeStderrLine('no changes made');
+        }
+
         return;
       }
 
@@ -172,7 +175,7 @@ export const clean = withExamples(
 
         if (!confirmed) {
           if (args.human) {
-            writeLine('aborted');
+            writeStderrLine('aborted');
           }
           return;
         }
@@ -185,20 +188,18 @@ export const clean = withExamples(
           keepClaudeProject: args['keep-claude-project'],
         });
 
-        if (!args.human) {
-          writeLine(result.path);
-          continue;
+        if (args.human) {
+          writeStderrLine('removed worktree');
+          writeStderrLine(`repository: ${result.repository}`);
+          writeStderrLine(`branch: ${result.branch}`);
+          writeStderrLine(`claude_project: ${result.claudeProject}`);
         }
 
-        writeLine('removed worktree');
-        writeLine(`repository: ${result.repository}`);
-        writeLine(`branch: ${result.branch}`);
-        writeLine(`path: ${result.path}`);
-        writeLine(`claude_project: ${result.claudeProject}`);
+        writeLine(result.path);
       }
 
       if (args.human) {
-        writeLine(`removed: ${selected.length}`);
+        writeStderrLine(`removed: ${selected.length}`);
       }
     },
   }),

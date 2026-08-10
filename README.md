@@ -29,9 +29,9 @@ The CLI is built for humans and agents at the same time:
 - **Flags are the interface.** Every command runs unattended. Interactive prompts only fill in
   a missing flag when a TTY is attached; in a pipe or CI the same input is an actionable error,
   never a hanging prompt.
-- **Data by default, `--human` when you want prose.** `create` and `clean` print bare
-  worktree paths on stdout so they compose with `cd`; `--human` swaps in a readable summary.
-  Errors and interactive prompts always go to stderr, so `$(...)` captures only data.
+- **stdout is only ever worktree paths.** Summaries, prompts and errors all go to stderr, in
+  every mode, so `cd "$(worktree create ...)"` works whether or not you pass `--human`.
+  `--human` adds prose beside the data; it never replaces it.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
@@ -121,7 +121,7 @@ The ticket list is the issues **assigned to you in the current sprint**
 from its `hotfixBranch`. The base branch is fetched from `origin` first unless `--no-fetch` is
 set, so new worktrees start from the current remote state.
 
-By default it prints just the created path, so it composes with `cd`:
+It prints the created path on stdout, so it composes with `cd`:
 
 ```bash
 $ worktree create --repo vela --ticket ABC-123
@@ -130,15 +130,16 @@ $ worktree create --repo vela --ticket ABC-123
 $ cd "$(worktree create --repo vela --ticket ABC-123)"
 ```
 
-`--human` prints the details instead:
+`--human` adds a summary on stderr. The path is still the only thing on stdout, so the `cd`
+form keeps working:
 
 ```
 $ worktree create --repo vela --ticket ABC-123 --human
-created worktree
-repository: vela
-branch: feature/ABC-123-fix-login-redirect
-base: origin/main
-path: /Users/you/worktrees/vela/ABC-123-fix-login-redirect
+created worktree                                        <- stderr
+repository: vela                                        <- stderr
+branch: feature/ABC-123-fix-login-redirect              <- stderr
+base: origin/main                                       <- stderr
+/Users/you/worktrees/vela/ABC-123-fix-login-redirect    <- stdout
 ```
 
 If the branch already exists locally, it is reused rather than recreated. Re-running the same
@@ -158,23 +159,27 @@ Removes worktrees and, unless told otherwise, their Claude Code project director
 | `--force`               | Remove even with uncommitted changes                  |
 | `--yes`                 | Skip the confirmation prompt                          |
 | `--dry-run`             | Print what would be removed without removing anything |
-| `--human`               | Print a readable summary instead of just the paths    |
+| `--human`               | Also print a readable summary on stderr               |
 | `--config <path>`       | Use a specific config file                            |
 
-Like `create`, it prints bare paths unless you ask for prose:
+Like `create`, stdout is just the removed paths:
 
 ```
 $ worktree clean --repo vela --all --yes
 /Users/you/worktrees/vela/ABC-123-fix-login-redirect
 /Users/you/worktrees/vela/ABC-130-patch
+```
 
+`--human` adds the detail on stderr:
+
+```
 $ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes --human
-removed worktree
-repository: vela
-branch: feature/ABC-123-fix-login-redirect
-path: /Users/you/worktrees/vela/ABC-123-fix-login-redirect
-claude_project: /Users/you/.claude/projects/-Users-you-worktrees-vela-ABC-123-fix-login-redirect
-removed: 1
+removed worktree                                        <- stderr
+repository: vela                                        <- stderr
+branch: feature/ABC-123-fix-login-redirect              <- stderr
+claude_project: /Users/you/.claude/projects/-Users-...  <- stderr
+/Users/you/worktrees/vela/ABC-123-fix-login-redirect    <- stdout
+removed: 1                                              <- stderr
 ```
 
 `claude_project` reports the removed path, `none` if there was nothing to remove, or `kept`
