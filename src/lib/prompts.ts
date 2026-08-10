@@ -8,6 +8,7 @@ import {
 } from '@clack/prompts';
 
 import { WORKTREE_TYPES, type WorktreeType } from '@/lib/branch-name.js';
+import { CancelledError } from '@/utils/cancelled-error.js';
 import { enableColors } from '@/utils/enable-colors.js';
 
 import type { Config } from '@/lib/config.js';
@@ -24,7 +25,7 @@ const prompt = async <T>(render: () => Promise<T | symbol>): Promise<T> => {
 const unwrap = <T>(value: T | symbol): T => {
   if (isCancel(value)) {
     cancel('Cancelled.', RENDER_TO_STDERR);
-    throw new Error('Cancelled by user.');
+    throw new CancelledError();
   }
 
   return value as T;

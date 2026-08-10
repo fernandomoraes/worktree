@@ -8,6 +8,7 @@ import { list } from '@/commands/list.js';
 import { pick } from '@/commands/pick.js';
 import { tickets } from '@/commands/tickets.js';
 import { handleBuiltinFlags } from '@/lib/help.js';
+import { CancelledError } from '@/utils/cancelled-error.js';
 import { logger } from '@/utils/logger.js';
 import { version } from '@/version.js';
 
@@ -41,6 +42,11 @@ const run = async () => {
 };
 
 run().catch((error: unknown) => {
+  // Escaping a prompt is not a failure: the prompt already reported it.
+  if (error instanceof CancelledError) {
+    process.exit(130);
+  }
+
   const message = error instanceof Error ? error.message : String(error);
   logger.error(message);
   process.exit(1);
