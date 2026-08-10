@@ -1,65 +1,8 @@
 import { defineCommand } from 'citty';
 
 import { withExamples } from '@/lib/examples.js';
-import { promptAction, promptConfirm, promptSelection } from '@/lib/prompts.js';
-import { actionsFor } from '@/lib/worktree-actions.js';
-import {
-  collectWorktrees,
-  removeWorktreeRow,
-  type WorktreeRow,
-} from '@/lib/worktrees.js';
-import { isInteractive } from '@/utils/is-interactive.js';
+import { collectWorktrees } from '@/lib/worktrees.js';
 import { writeLine } from '@/utils/write-line.js';
-import { writeStderrLine } from '@/utils/write-stderr-line.js';
-
-const selectRows = async (rows: WorktreeRow[]) => {
-  const chosen = await promptSelection(
-    'Worktrees',
-    rows.map((row) => ({
-      value: row.path,
-      label: `${row.repository}  ${row.branch}`,
-      hint: row.claudeProject ? 'has claude project' : undefined,
-    }))
-  );
-
-  return rows.filter((row) => chosen.includes(row.path));
-};
-
-const deleteRows = async ({
-  rows,
-  force,
-  deleteBranch,
-  keepClaudeProject,
-  skipConfirm,
-}: {
-  rows: WorktreeRow[];
-  force: boolean;
-  deleteBranch: boolean;
-  keepClaudeProject: boolean;
-  skipConfirm: boolean;
-}) => {
-  if (
-    !skipConfirm &&
-    !(await promptConfirm(`Remove ${rows.length} worktree(s)?`))
-  ) {
-    writeStderrLine('aborted');
-    return;
-  }
-
-  for (const row of rows) {
-    const result = await removeWorktreeRow(row, {
-      force,
-      deleteBranch,
-      keepClaudeProject,
-    });
-
-    writeStderrLine(`removed ${result.repository} ${result.branch}`);
-    writeStderrLine(`  path: ${result.path}`);
-    writeStderrLine(`  claude_project: ${result.claudeProject}`);
-  }
-
-  writeStderrLine(`removed: ${rows.length}`);
-};
 
 export const list = withExamples(
   defineCommand({
@@ -73,12 +16,6 @@ export const list = withExamples(
         description:
           'Repository name from config, or a path to a git repository',
       },
-      human: {
-        type: 'boolean',
-        description:
-          'Select worktrees interactively, then open one (prints its path) or delete them',
-        default: false,
-      },
       all: {
         type: 'boolean',
         description: 'Include the primary worktree of each repository',
@@ -87,27 +24,6 @@ export const list = withExamples(
       json: {
         type: 'boolean',
         description: 'Emit JSON instead of tab-separated values',
-        default: false,
-      },
-      'delete-branch': {
-        type: 'boolean',
-        description: 'When deleting, also delete the local branch',
-        default: false,
-      },
-      'keep-claude-project': {
-        type: 'boolean',
-        description:
-          'When deleting, keep the ~/.claude/projects directory for the worktree',
-        default: false,
-      },
-      force: {
-        type: 'boolean',
-        description: 'When deleting, allow worktrees with uncommitted changes',
-        default: false,
-      },
-      yes: {
-        type: 'boolean',
-        description: 'Skip the delete confirmation prompt',
         default: false,
       },
       config: {
@@ -119,64 +35,24 @@ export const list = withExamples(
       const rows = await collectWorktrees({
         configPath: args.config,
         repository: args.repo,
-        includePrimary: args.all && !args.human,
+        includePrimary: args.all,
       });
 
-      if (!args.human) {
-        if (args.json) {
-          writeLine(JSON.stringify(rows, undefined, 2));
-          return;
-        }
-
-        for (const row of rows) {
-          writeLine([row.repository, row.branch, row.path].join('\t'));
-        }
-
+      if (args.json) {
+        writeLine(JSON.stringify(rows, undefined, 2));
         return;
       }
 
-      if (!isInteractive()) {
-        throw new Error(
-          '--human needs an interactive terminal.\n  Drop --human to print the worktrees instead.'
-        );
+      for (const row of rows) {
+        writeLine([row.repository, row.branch, row.path].join('\t'));
       }
-
-      if (rows.length === 0) {
-        writeStderrLine('no worktrees');
-        return;
-      }
-
-      const selected = await selectRows(rows);
-
-      if (selected.length === 0) {
-        writeStderrLine('nothing selected');
-        return;
-      }
-
-      const [only] = selected;
-      const actions = actionsFor(selected.length);
-      const action =
-        actions.length === 1 ? actions[0] : await promptAction(actions);
-
-      if (action === 'open' && only) {
-        writeLine(only.path);
-        return;
-      }
-
-      await deleteRows({
-        rows: selected,
-        force: args.force,
-        deleteBranch: args['delete-branch'],
-        keepClaudeProject: args['keep-claude-project'],
-        skipConfirm: args.yes,
-      });
     },
   }),
   [
     'worktree list',
     'worktree list --json',
     'worktree list --repo vela',
-    'worktree list --human                # select, then open or delete',
-    'cd "$(worktree list --human)"        # jump into the selected worktree',
+    'worktree list --all           # include each primary worktree',
+    'worktree pick                 # select one interactively instead',
   ]
 );

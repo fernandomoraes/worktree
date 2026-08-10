@@ -5,6 +5,7 @@ import { clean } from '@/commands/clean.js';
 import { config } from '@/commands/config.js';
 import { create } from '@/commands/create.js';
 import { list } from '@/commands/list.js';
+import { pick } from '@/commands/pick.js';
 import { tickets } from '@/commands/tickets.js';
 import { handleBuiltinFlags } from '@/lib/help.js';
 import { logger } from '@/utils/logger.js';
@@ -16,7 +17,7 @@ const main = defineCommand({
     version,
     description: 'Manage git worktrees for tickets and hotfixes',
   },
-  subCommands: { list, create, clean, tickets, config },
+  subCommands: { list, pick, create, clean, tickets, config },
 });
 
 const run = async () => {

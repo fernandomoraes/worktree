@@ -18,7 +18,7 @@ worktree create --repo vela                   # pick a ticket from your current 
 cd "$(worktree create --repo vela)"           # ...and jump straight into it
 worktree tickets                              # your sprint tickets, for scripts
 worktree list                                 # see what is open
-cd "$(worktree list --human)"                 # pick an existing one and jump into it
+cd "$(worktree pick)"                         # pick an existing one and jump into it
 worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect
 ```
 
@@ -31,8 +31,10 @@ The CLI is built for humans and agents at the same time:
   never a hanging prompt.
 - **stdout is only ever worktree paths.** Summaries, prompts and errors all go to stderr, in
   every mode, so `cd "$(worktree create ...)"` always works. `--verbose` adds detail beside
-  the data; it never replaces it. `--human` is a separate idea: it means "interact with me",
-  and only `list` has one.
+  the data; it never replaces it.
+- **Interactivity is a command, not a mode.** `list` always prints rows; `pick` always opens a
+  picker and refuses to run without a terminal. Neither changes shape based on what stdout
+  happens to be attached to.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
@@ -45,22 +47,19 @@ Run `worktree <command> --help` for the full flag list and examples.
 
 ### `worktree list`
 
-Lists worktrees across every configured repository as `repository<TAB>branch<TAB>path`.
+Prints worktrees across every configured repository as `repository<TAB>branch<TAB>path`. Always
+non-interactive, so it composes with pipes and scripts.
 
 | Flag              | Description                                                       |
 | ----------------- | ----------------------------------------------------------------- |
 | `--repo <ref>`    | Limit to one repository: a config name or a path to a git repo    |
-| `--human`         | Select worktrees interactively, then open one or delete them      |
 | `--all`           | Include each repository's primary worktree (excluded by default)  |
 | `--json`          | Emit JSON, including `head`, `locked`, and `claudeProject` status |
 | `--config <path>` | Use a specific config file                                        |
 
-When deleting via `--human`, the same flags as `clean` apply: `--force`, `--yes`,
-`--delete-branch`, and `--keep-claude-project`.
+### `worktree pick`
 
-#### Picking a worktree
-
-`--human` opens a multi-select. What you can do next depends on how many you chose:
+Opens a multi-select of your worktrees. What you can do next depends on how many you chose:
 
 - **exactly one** → _Open_ (prints its path) or _Delete_
 - **more than one** → _Delete_ only
@@ -69,20 +68,27 @@ The prompts render on **stderr** and the opened path is the only thing on **stdo
 selection can be captured directly:
 
 ```bash
-cd "$(worktree list --human)"
+cd "$(worktree pick)"
 ```
 
 Worth putting in your shell profile:
 
 ```bash
-wt() { cd "$(worktree list --human)" || return; }
+wt() { cd "$(worktree pick)" || return; }
 ```
 
-Deleting through `--human` writes its progress to stderr, leaving stdout empty — so the `cd`
-above fails harmlessly instead of jumping somewhere unexpected.
+| Flag                    | Description                                        |
+| ----------------------- | -------------------------------------------------- |
+| `--repo <ref>`          | Limit to one repository                            |
+| `--delete-branch`       | When deleting, also delete the local branch        |
+| `--keep-claude-project` | When deleting, keep the `~/.claude/projects` entry |
+| `--force`               | When deleting, allow uncommitted changes           |
+| `--yes`                 | Skip the delete confirmation                       |
+| `--config <path>`       | Use a specific config file                         |
 
-Bare `worktree list` is unaffected: it still prints tab-separated rows and stays pipeable.
-`--human` requires a terminal and errors out otherwise.
+Deleting writes its progress to stderr, leaving stdout empty — so the `cd` above fails
+harmlessly instead of jumping somewhere unexpected. `pick` requires a terminal and errors out
+otherwise, pointing you at `worktree list`.
 
 ### `worktree create`
 
