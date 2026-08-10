@@ -1,0 +1,79 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Pack and validate without publishing'
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # required for npm provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check types
+        run: pnpm check-types
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version." >&2
+            echo "Bump the version, commit, then re-tag." >&2
+            exit 1
+          fi
+          echo "Publishing version $version"
+
+      - name: Verify the CLI runs from the build
+        run: node dist/cli.js --version
+
+      - name: Publish
+        if: ${{ github.event_name == 'push' || !inputs.dry-run }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish (dry run)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        run: npm publish --provenance --access public --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

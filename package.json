@@ -10,12 +10,23 @@
     "claude-code"
   ],
   "license": "MIT",
+  "author": "Fernando Moraes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fernandomoraes/worktree.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fernandomoraes/worktree/issues"
+  },
+  "homepage": "https://github.com/fernandomoraes/worktree#readme",
   "type": "module",
   "bin": {
     "worktree": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

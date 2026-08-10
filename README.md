@@ -337,6 +337,33 @@ Errors are handled once, in `cli.ts`. Subcommands throw with an actionable messa
 catch or call `process.exit`; API clients map HTTP status codes to user-facing messages in one
 place.
 
+## Releasing
+
+CI runs lint, format, types, tests and the build on every push and pull request to `main`.
+
+Publishing is driven by tags. The workflow re-runs the whole gate, refuses to continue if the
+tag does not match `package.json`, smoke-tests the built binary, and publishes with
+[provenance](https://docs.npmjs.com/generating-provenance-statements/):
+
+```bash
+npm version patch      # or minor / major — commits and tags
+git push --follow-tags # tag push triggers the publish workflow
+```
+
+`workflow_dispatch` runs the same job with `dry-run` enabled by default, so the packaging can
+be checked without releasing.
+
+### One-time setup
+
+Publishing needs an npm **automation** token in the repository secrets as `NPM_TOKEN`
+(Settings → Secrets and variables → Actions).
+
+npm's [trusted publishing](https://docs.npmjs.com/trusted-publishers/) would remove that
+long-lived token, but it cannot perform a package's _first_ publish — npmjs.com requires the
+package to exist before a trusted publisher can be configured. So publish `0.1.0` with the
+token, then optionally switch: add this repo and `.github/workflows/publish.yml` as a trusted
+publisher on npm and delete the secret.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
