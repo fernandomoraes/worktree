@@ -6,8 +6,7 @@
     "git",
     "worktree",
     "cli",
-    "jira",
-    "claude-code"
+    "jira"
   ],
   "license": "MIT",
   "author": "Fernando Moraes",

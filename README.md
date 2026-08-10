@@ -1,8 +1,7 @@
 # @moraes/worktree
 
-A CLI for the git worktree loop: create one per ticket or hotfix, list what you have open, and
-clean them up — including the `~/.claude/projects` directory that Claude Code leaves behind for
-each worktree path.
+A CLI for the git worktree loop: create one per ticket or hotfix, list what you have open,
+jump between them, and clean them up when you are done.
 
 ```bash
 npm install -g @moraes/worktree
@@ -50,12 +49,12 @@ Run `worktree <command> --help` for the full flag list and examples.
 Prints worktrees across every configured repository as `repository<TAB>branch<TAB>path`. Always
 non-interactive, so it composes with pipes and scripts.
 
-| Flag              | Description                                                       |
-| ----------------- | ----------------------------------------------------------------- |
-| `--repo <ref>`    | Limit to one repository: a config name or a path to a git repo    |
-| `--all`           | Include each repository's primary worktree (excluded by default)  |
-| `--json`          | Emit JSON, including `head`, `locked`, and `claudeProject` status |
-| `--config <path>` | Use a specific config file                                        |
+| Flag              | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| `--repo <ref>`    | Limit to one repository: a config name or a path to a git repo   |
+| `--all`           | Include each repository's primary worktree (excluded by default) |
+| `--json`          | Emit JSON, including `head` and `locked`                         |
+| `--config <path>` | Use a specific config file                                       |
 
 ### `worktree pick`
 
@@ -77,14 +76,13 @@ Worth putting in your shell profile:
 wt() { cd "$(worktree pick)" || return; }
 ```
 
-| Flag                    | Description                                        |
-| ----------------------- | -------------------------------------------------- |
-| `--repo <ref>`          | Limit to one repository                            |
-| `--delete-branch`       | When deleting, also delete the local branch        |
-| `--keep-claude-project` | When deleting, keep the `~/.claude/projects` entry |
-| `--force`               | When deleting, allow uncommitted changes           |
-| `--yes`                 | Skip the delete confirmation                       |
-| `--config <path>`       | Use a specific config file                         |
+| Flag              | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `--repo <ref>`    | Limit to one repository                     |
+| `--delete-branch` | When deleting, also delete the local branch |
+| `--force`         | When deleting, allow uncommitted changes    |
+| `--yes`           | Skip the delete confirmation                |
+| `--config <path>` | Use a specific config file                  |
 
 Deleting writes its progress to stderr, leaving stdout empty — so the `cd` above fails
 harmlessly instead of jumping somewhere unexpected. `pick` requires a terminal and errors out
@@ -154,20 +152,19 @@ command prints the existing path rather than failing, so the `cd` form stays ide
 
 ### `worktree clean`
 
-Removes worktrees and, unless told otherwise, their Claude Code project directories.
+Removes worktrees, and optionally their branches.
 
-| Flag                    | Description                                           |
-| ----------------------- | ----------------------------------------------------- |
-| `--repo <ref>`          | Repository name from config, or a path to a git repo  |
-| `--branch <branch>`     | Branch of the worktree to remove                      |
-| `--all`                 | Remove every non-primary worktree in scope            |
-| `--delete-branch`       | Also delete the local branch afterwards               |
-| `--keep-claude-project` | Keep the `~/.claude/projects` directory               |
-| `--force`               | Remove even with uncommitted changes                  |
-| `--yes`                 | Skip the confirmation prompt                          |
-| `--dry-run`             | Print what would be removed without removing anything |
-| `--verbose`             | Also report each removed worktree on stderr           |
-| `--config <path>`       | Use a specific config file                            |
+| Flag                | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `--repo <ref>`      | Repository name from config, or a path to a git repo  |
+| `--branch <branch>` | Branch of the worktree to remove                      |
+| `--all`             | Remove every non-primary worktree in scope            |
+| `--delete-branch`   | Also delete the local branch afterwards               |
+| `--force`           | Remove even with uncommitted changes                  |
+| `--yes`             | Skip the confirmation prompt                          |
+| `--dry-run`         | Print what would be removed without removing anything |
+| `--verbose`         | Also report each removed worktree on stderr           |
+| `--config <path>`   | Use a specific config file                            |
 
 Like `create`, stdout is just the removed paths:
 
@@ -184,21 +181,9 @@ $ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes -
 removed worktree                                        <- stderr
 repository: vela                                        <- stderr
 branch: feature/ABC-123-fix-login-redirect              <- stderr
-claude_project: /Users/you/.claude/projects/-Users-...  <- stderr
 /Users/you/worktrees/vela/ABC-123-fix-login-redirect    <- stdout
 removed: 1                                              <- stderr
 ```
-
-`claude_project` reports the removed path, `none` if there was nothing to remove, or `kept`
-when `--keep-claude-project` is set.
-
-The directory is looked up under `$CLAUDE_CONFIG_DIR` when that is set, falling back to
-`~/.claude`, matching how Claude Code resolves its own config root.
-
-Only `<config>/projects/<slug>` is removed — the session transcripts. Claude Code keeps other
-per-project state elsewhere that this tool deliberately leaves alone: the entry under
-`projects` in `~/.claude.json` (permissions, MCP servers, trust flags) and prompt history in
-`~/.claude/history.jsonl`.
 
 With no `--branch` and no `--all`, an interactive terminal gets a multi-select of open
 worktrees; a non-interactive one gets an error telling you which flag to pass.
@@ -343,7 +328,7 @@ Dependencies use exact versions — no `^` or `~`.
 src/
   cli.ts            entry point: routing + the single error handler
   commands/         one file per subcommand, thin arg handling
-  lib/              git, jira, config, claude-projects, prompts, help
+  lib/              git, jira, config, worktrees, prompts, help
   utils/            single-purpose helpers, one export each
 tests/              vitest suites, including real git integration tests
 ```

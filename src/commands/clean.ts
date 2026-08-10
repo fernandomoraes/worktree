@@ -56,7 +56,6 @@ const selectCandidates = async ({
     candidates.map((candidate) => ({
       value: candidate.path,
       label: `${candidate.repository}  ${candidate.branch}`,
-      hint: candidate.claudeProject ? 'has claude project' : undefined,
     }))
   );
 
@@ -67,8 +66,7 @@ export const clean = withExamples(
   defineCommand({
     meta: {
       name: 'clean',
-      description:
-        'Remove worktrees and their matching Claude Code project directories',
+      description: 'Remove worktrees, and optionally their branches',
     },
     args: {
       repo: {
@@ -88,11 +86,6 @@ export const clean = withExamples(
       'delete-branch': {
         type: 'boolean',
         description: 'Also delete the local branch after removing the worktree',
-        default: false,
-      },
-      'keep-claude-project': {
-        type: 'boolean',
-        description: 'Keep the ~/.claude/projects directory for the worktree',
         default: false,
       },
       force: {
@@ -184,14 +177,12 @@ export const clean = withExamples(
         const result = await removeWorktreeRow(candidate, {
           force: args.force,
           deleteBranch: args['delete-branch'],
-          keepClaudeProject: args['keep-claude-project'],
         });
 
         if (args.verbose) {
           writeStderrLine('removed worktree');
           writeStderrLine(`repository: ${result.repository}`);
           writeStderrLine(`branch: ${result.branch}`);
-          writeStderrLine(`claude_project: ${result.claudeProject}`);
         }
 
         writeLine(result.path);

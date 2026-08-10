@@ -1,7 +1,3 @@
-import {
-  claudeProjectExists,
-  removeClaudeProject,
-} from '@/lib/claude-projects.js';
 import { loadConfig } from '@/lib/config.js';
 import {
   deleteBranch,
@@ -24,22 +20,21 @@ export type WorktreeRow = {
   head: string;
   primary: boolean;
   locked: boolean;
-  claudeProject: boolean;
 };
 
-const toRows = async (repository: ResolvedRepository, worktrees: Worktree[]) =>
-  Promise.all(
-    worktrees.map(async (worktree) => ({
-      repository: repository.name,
-      repositoryPath: repository.path,
-      branch: worktree.branch,
-      path: worktree.path,
-      head: worktree.head,
-      primary: worktree.isPrimary,
-      locked: worktree.isLocked,
-      claudeProject: await claudeProjectExists(worktree.path),
-    }))
-  );
+const toRows = (
+  repository: ResolvedRepository,
+  worktrees: Worktree[]
+): WorktreeRow[] =>
+  worktrees.map((worktree) => ({
+    repository: repository.name,
+    repositoryPath: repository.path,
+    branch: worktree.branch,
+    path: worktree.path,
+    head: worktree.head,
+    primary: worktree.isPrimary,
+    locked: worktree.isLocked,
+  }));
 
 const dedupeByPath = (rows: WorktreeRow[]) => {
   const seen = new Set<string>();
@@ -78,7 +73,7 @@ export const collectWorktrees = async ({
   const rows: WorktreeRow[] = [];
 
   for (const resolved of repositories) {
-    rows.push(...(await toRows(resolved, await listWorktrees(resolved.path))));
+    rows.push(...toRows(resolved, await listWorktrees(resolved.path)));
   }
 
   const unique = dedupeByPath(rows);
@@ -89,14 +84,12 @@ export const collectWorktrees = async ({
 export type RemovalOptions = {
   force: boolean;
   deleteBranch: boolean;
-  keepClaudeProject: boolean;
 };
 
 export type RemovalResult = {
   repository: string;
   branch: string;
   path: string;
-  claudeProject: string;
 };
 
 export const removeWorktreeRow = async (
@@ -115,10 +108,6 @@ export const removeWorktreeRow = async (
     force: options.force,
   });
 
-  const claudeProject = options.keepClaudeProject
-    ? 'kept'
-    : await describeClaudeProjectRemoval(row.path);
-
   if (options.deleteBranch) {
     await deleteBranch({
       repositoryPath: row.repositoryPath,
@@ -131,11 +120,5 @@ export const removeWorktreeRow = async (
     repository: row.repository,
     branch: row.branch,
     path: row.path,
-    claudeProject,
   };
-};
-
-const describeClaudeProjectRemoval = async (worktreePath: string) => {
-  const { path, removed } = await removeClaudeProject(worktreePath);
-  return removed ? path : 'none';
 };

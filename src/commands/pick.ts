@@ -18,7 +18,6 @@ const selectRows = async (rows: WorktreeRow[]) => {
     rows.map((row) => ({
       value: row.path,
       label: `${row.repository}  ${row.branch}`,
-      hint: row.claudeProject ? 'has claude project' : undefined,
     }))
   );
 
@@ -29,13 +28,11 @@ const deleteRows = async ({
   rows,
   force,
   deleteBranch,
-  keepClaudeProject,
   skipConfirm,
 }: {
   rows: WorktreeRow[];
   force: boolean;
   deleteBranch: boolean;
-  keepClaudeProject: boolean;
   skipConfirm: boolean;
 }) => {
   if (
@@ -50,12 +47,10 @@ const deleteRows = async ({
     const result = await removeWorktreeRow(row, {
       force,
       deleteBranch,
-      keepClaudeProject,
     });
 
     writeStderrLine(`removed ${result.repository} ${result.branch}`);
     writeStderrLine(`  path: ${result.path}`);
-    writeStderrLine(`  claude_project: ${result.claudeProject}`);
   }
 
   writeStderrLine(`removed: ${rows.length}`);
@@ -76,12 +71,6 @@ export const pick = withExamples(
       'delete-branch': {
         type: 'boolean',
         description: 'When deleting, also delete the local branch',
-        default: false,
-      },
-      'keep-claude-project': {
-        type: 'boolean',
-        description:
-          'When deleting, keep the ~/.claude/projects directory for the worktree',
         default: false,
       },
       force: {
@@ -138,7 +127,6 @@ export const pick = withExamples(
         rows: selected,
         force: args.force,
         deleteBranch: args['delete-branch'],
-        keepClaudeProject: args['keep-claude-project'],
         skipConfirm: args.yes,
       });
     },

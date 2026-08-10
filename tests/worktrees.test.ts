@@ -96,13 +96,11 @@ describe('removeWorktreeRow', () => {
     const result = await removeWorktreeRow(row!, {
       force: false,
       deleteBranch: false,
-      keepClaudeProject: false,
     });
 
     expect(result).toMatchObject({
       repository: 'demo',
       branch: 'feature/demo',
-      claudeProject: 'none',
     });
 
     await expect(
@@ -121,22 +119,7 @@ describe('removeWorktreeRow', () => {
       removeWorktreeRow(row!, {
         force: false,
         deleteBranch: false,
-        keepClaudeProject: false,
       })
     ).rejects.toThrow(/uncommitted changes.*--force/s);
-  });
-
-  it('reports a kept claude project when asked to keep it', async () => {
-    const { root, path } = await createRepositoryWithWorktree();
-    const configPath = await writeConfig(root, [{ name: 'demo', path }]);
-    const [row] = await collectWorktrees({ configPath, includePrimary: false });
-
-    const result = await removeWorktreeRow(row!, {
-      force: false,
-      deleteBranch: true,
-      keepClaudeProject: true,
-    });
-
-    expect(result.claudeProject).toBe('kept');
   });
 });
