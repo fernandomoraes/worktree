@@ -15,10 +15,10 @@ Requires **Node.js >= 24** and **git** on `PATH`.
 ```bash
 worktree config init                          # scaffold ~/.config/worktree/config.json
 worktree create --repo vela                   # pick a ticket from your current sprint
-worktree create --repo vela --ticket ABC-123  # or name it from a specific ticket
+cd "$(worktree create --repo vela)"           # ...and jump straight into it
 worktree tickets                              # your sprint tickets, for scripts
 worktree list                                 # see what is open
-cd "$(worktree list --pick)"                  # pick one and jump into it
+cd "$(worktree list --human)"                 # pick an existing one and jump into it
 worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect
 ```
 
@@ -29,9 +29,9 @@ The CLI is built for humans and agents at the same time:
 - **Flags are the interface.** Every command runs unattended. Interactive prompts only fill in
   a missing flag when a TTY is attached; in a pipe or CI the same input is an actionable error,
   never a hanging prompt.
-- **Structured output.** Data goes to stdout as `key: value` lines or tab-separated rows;
-  diagnostics, errors and interactive prompts go to stderr, so `$(...)` captures only data.
-  `list` and `config show` also take `--json`.
+- **Data by default, `--human` when you want prose.** `create` and `clean` print bare
+  worktree paths on stdout so they compose with `cd`; `--human` swaps in a readable summary.
+  Errors and interactive prompts always go to stderr, so `$(...)` captures only data.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
@@ -49,17 +49,17 @@ Lists worktrees across every configured repository as `repository<TAB>branch<TAB
 | Flag              | Description                                                       |
 | ----------------- | ----------------------------------------------------------------- |
 | `--repo <ref>`    | Limit to one repository: a config name or a path to a git repo    |
-| `--pick`          | Select worktrees interactively, then open one or delete them      |
+| `--human`         | Select worktrees interactively, then open one or delete them      |
 | `--all`           | Include each repository's primary worktree (excluded by default)  |
 | `--json`          | Emit JSON, including `head`, `locked`, and `claudeProject` status |
 | `--config <path>` | Use a specific config file                                        |
 
-When deleting via `--pick`, the same flags as `clean` apply: `--force`, `--yes`,
+When deleting via `--human`, the same flags as `clean` apply: `--force`, `--yes`,
 `--delete-branch`, and `--keep-claude-project`.
 
 #### Picking a worktree
 
-`--pick` opens a multi-select. What you can do next depends on how many you chose:
+`--human` opens a multi-select. What you can do next depends on how many you chose:
 
 - **exactly one** → _Open_ (prints its path) or _Delete_
 - **more than one** → _Delete_ only
@@ -68,20 +68,20 @@ The prompts render on **stderr** and the opened path is the only thing on **stdo
 selection can be captured directly:
 
 ```bash
-cd "$(worktree list --pick)"
+cd "$(worktree list --human)"
 ```
 
 Worth putting in your shell profile:
 
 ```bash
-wt() { cd "$(worktree list --pick)" || return; }
+wt() { cd "$(worktree list --human)" || return; }
 ```
 
-Deleting through `--pick` writes its progress to stderr too, leaving stdout empty — so the
-`cd` above fails harmlessly instead of jumping somewhere unexpected.
+Deleting through `--human` writes its progress to stderr, leaving stdout empty — so the `cd`
+above fails harmlessly instead of jumping somewhere unexpected.
 
 Bare `worktree list` is unaffected: it still prints tab-separated rows and stays pipeable.
-`--pick` requires a terminal and errors out otherwise.
+`--human` requires a terminal and errors out otherwise.
 
 ### `worktree create`
 
@@ -97,6 +97,7 @@ Creates a worktree at `<worktreesPath>/<repository>/<name>` on a new branch.
 | `--base <branch>` | Start from an explicit branch instead of the configured one              |
 | `--no-fetch`      | Skip fetching the base branch from `origin`                              |
 | `--dry-run`       | Print what would be created without touching the filesystem              |
+| `--human`         | Print a readable summary instead of just the worktree path               |
 | `--config <path>` | Use a specific config file                                               |
 
 Run it with no naming flags and it asks how to name the worktree:
@@ -120,8 +121,19 @@ The ticket list is the issues **assigned to you in the current sprint**
 from its `hotfixBranch`. The base branch is fetched from `origin` first unless `--no-fetch` is
 set, so new worktrees start from the current remote state.
 
-```
+By default it prints just the created path, so it composes with `cd`:
+
+```bash
 $ worktree create --repo vela --ticket ABC-123
+/Users/you/worktrees/vela/ABC-123-fix-login-redirect
+
+$ cd "$(worktree create --repo vela --ticket ABC-123)"
+```
+
+`--human` prints the details instead:
+
+```
+$ worktree create --repo vela --ticket ABC-123 --human
 created worktree
 repository: vela
 branch: feature/ABC-123-fix-login-redirect
@@ -129,7 +141,8 @@ base: origin/main
 path: /Users/you/worktrees/vela/ABC-123-fix-login-redirect
 ```
 
-If the branch already exists locally, it is reused rather than recreated.
+If the branch already exists locally, it is reused rather than recreated. Re-running the same
+command prints the existing path rather than failing, so the `cd` form stays idempotent.
 
 ### `worktree clean`
 
@@ -145,10 +158,17 @@ Removes worktrees and, unless told otherwise, their Claude Code project director
 | `--force`               | Remove even with uncommitted changes                  |
 | `--yes`                 | Skip the confirmation prompt                          |
 | `--dry-run`             | Print what would be removed without removing anything |
+| `--human`               | Print a readable summary instead of just the paths    |
 | `--config <path>`       | Use a specific config file                            |
 
+Like `create`, it prints bare paths unless you ask for prose:
+
 ```
-$ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes
+$ worktree clean --repo vela --all --yes
+/Users/you/worktrees/vela/ABC-123-fix-login-redirect
+/Users/you/worktrees/vela/ABC-130-patch
+
+$ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes --human
 removed worktree
 repository: vela
 branch: feature/ABC-123-fix-login-redirect

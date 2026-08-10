@@ -73,7 +73,7 @@ export const list = withExamples(
         description:
           'Repository name from config, or a path to a git repository',
       },
-      pick: {
+      human: {
         type: 'boolean',
         description:
           'Select worktrees interactively, then open one (prints its path) or delete them',
@@ -119,10 +119,10 @@ export const list = withExamples(
       const rows = await collectWorktrees({
         configPath: args.config,
         repository: args.repo,
-        includePrimary: args.all && !args.pick,
+        includePrimary: args.all && !args.human,
       });
 
-      if (!args.pick) {
+      if (!args.human) {
         if (args.json) {
           writeLine(JSON.stringify(rows, undefined, 2));
           return;
@@ -137,7 +137,7 @@ export const list = withExamples(
 
       if (!isInteractive()) {
         throw new Error(
-          '--pick needs an interactive terminal.\n  Drop --pick to print the worktrees instead.'
+          '--human needs an interactive terminal.\n  Drop --human to print the worktrees instead.'
         );
       }
 
@@ -176,7 +176,7 @@ export const list = withExamples(
     'worktree list',
     'worktree list --json',
     'worktree list --repo vela',
-    'worktree list --pick                 # select, then open or delete',
-    'cd "$(worktree list --pick)"         # jump into the selected worktree',
+    'worktree list --human                # select, then open or delete',
+    'cd "$(worktree list --human)"        # jump into the selected worktree',
   ]
 );

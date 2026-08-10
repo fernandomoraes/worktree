@@ -109,6 +109,12 @@ export const clean = withExamples(
         description: 'Print what would be removed without removing anything',
         default: false,
       },
+      human: {
+        type: 'boolean',
+        description:
+          'Print a readable summary instead of just the removed worktree paths',
+        default: false,
+      },
       config: {
         type: 'string',
         description: 'Path to the config file',
@@ -122,7 +128,9 @@ export const clean = withExamples(
       });
 
       if (candidates.length === 0) {
-        writeLine('no worktrees to clean');
+        if (args.human) {
+          writeLine('no worktrees to clean');
+        }
         return;
       }
 
@@ -133,11 +141,20 @@ export const clean = withExamples(
       });
 
       if (selected.length === 0) {
-        writeLine('no worktrees to clean');
+        if (args.human) {
+          writeLine('no worktrees to clean');
+        }
         return;
       }
 
       if (args['dry-run']) {
+        if (!args.human) {
+          for (const candidate of selected) {
+            writeLine(candidate.path);
+          }
+          return;
+        }
+
         writeLine(`would remove ${selected.length} worktree(s)`);
         for (const candidate of selected) {
           writeLine(
@@ -154,7 +171,9 @@ export const clean = withExamples(
         );
 
         if (!confirmed) {
-          writeLine('aborted');
+          if (args.human) {
+            writeLine('aborted');
+          }
           return;
         }
       }
@@ -166,6 +185,11 @@ export const clean = withExamples(
           keepClaudeProject: args['keep-claude-project'],
         });
 
+        if (!args.human) {
+          writeLine(result.path);
+          continue;
+        }
+
         writeLine('removed worktree');
         writeLine(`repository: ${result.repository}`);
         writeLine(`branch: ${result.branch}`);
@@ -173,13 +197,15 @@ export const clean = withExamples(
         writeLine(`claude_project: ${result.claudeProject}`);
       }
 
-      writeLine(`removed: ${selected.length}`);
+      if (args.human) {
+        writeLine(`removed: ${selected.length}`);
+      }
     },
   }),
   [
     'worktree clean --repo vela --branch feature/ABC-123',
     'worktree clean --repo vela --all --dry-run',
-    'worktree clean --repo vela --all --yes --delete-branch',
+    'worktree clean --repo vela --all --yes --delete-branch --human',
     'worktree clean                       # interactive multi-select',
   ]
 );

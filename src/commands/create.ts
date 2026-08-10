@@ -186,6 +186,12 @@ export const create = withExamples(
           'Print what would be created without touching the filesystem',
         default: false,
       },
+      human: {
+        type: 'boolean',
+        description:
+          'Print a readable summary instead of just the worktree path',
+        default: false,
+      },
       config: {
         type: 'string',
         description: 'Path to the config file',
@@ -205,21 +211,26 @@ export const create = withExamples(
       const base = args.base ?? baseBranchFor(repository, type);
       const worktreePath = join(worktreesRoot(config), repository.name, name);
 
-      if (args['dry-run']) {
-        writeLine('would create worktree');
+      const report = (status: string, base: string) => {
+        if (!args.human) {
+          writeLine(worktreePath);
+          return;
+        }
+
+        writeLine(status);
         writeLine(`repository: ${repository.name}`);
         writeLine(`branch: ${branch}`);
         writeLine(`base: ${base}`);
         writeLine(`path: ${worktreePath}`);
-        writeLine('no changes made');
+      };
+
+      if (args['dry-run']) {
+        report('would create worktree', base);
         return;
       }
 
       if (await pathExists(worktreePath)) {
-        writeLine('worktree already exists');
-        writeLine(`repository: ${repository.name}`);
-        writeLine(`branch: ${branch}`);
-        writeLine(`path: ${worktreePath}`);
+        report('worktree already exists', base);
         return;
       }
 
@@ -243,18 +254,20 @@ export const create = withExamples(
         startPoint,
       });
 
-      writeLine('created worktree');
-      writeLine(`repository: ${repository.name}`);
-      writeLine(`branch: ${branch}${reusedBranch ? ' (existing)' : ''}`);
-      writeLine(`base: ${startPoint}`);
-      writeLine(`path: ${worktreePath}`);
+      report(
+        reusedBranch
+          ? 'created worktree (existing branch)'
+          : 'created worktree',
+        startPoint
+      );
     },
   }),
   [
     'worktree create --repo vela                    # pick a ticket from your current sprint',
     'worktree create --repo vela --ticket ABC-123   # skip the picker',
-    'worktree create --repo vela --name "fix login redirect"',
+    'worktree create --repo vela --name "fix login redirect" --human',
     'worktree create --repo vela --ticket ABC-123 --type hotfix',
+    'cd "$(worktree create --repo vela --ticket ABC-123)"',
     'worktree create --repo ./path/to/repo --name spike --dry-run',
   ]
 );
