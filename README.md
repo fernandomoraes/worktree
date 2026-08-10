@@ -18,6 +18,7 @@ worktree create --repo vela                   # pick a ticket from your current 
 worktree create --repo vela --ticket ABC-123  # or name it from a specific ticket
 worktree tickets                              # your sprint tickets, for scripts
 worktree list                                 # see what is open
+cd "$(worktree list --pick)"                  # pick one and jump into it
 worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect
 ```
 
@@ -29,7 +30,8 @@ The CLI is built for humans and agents at the same time:
   a missing flag when a TTY is attached; in a pipe or CI the same input is an actionable error,
   never a hanging prompt.
 - **Structured output.** Data goes to stdout as `key: value` lines or tab-separated rows;
-  diagnostics and errors go to stderr. `list` and `config show` also take `--json`.
+  diagnostics, errors and interactive prompts go to stderr, so `$(...)` captures only data.
+  `list` and `config show` also take `--json`.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
@@ -47,9 +49,39 @@ Lists worktrees across every configured repository as `repository<TAB>branch<TAB
 | Flag              | Description                                                       |
 | ----------------- | ----------------------------------------------------------------- |
 | `--repo <ref>`    | Limit to one repository: a config name or a path to a git repo    |
+| `--pick`          | Select worktrees interactively, then open one or delete them      |
 | `--all`           | Include each repository's primary worktree (excluded by default)  |
 | `--json`          | Emit JSON, including `head`, `locked`, and `claudeProject` status |
 | `--config <path>` | Use a specific config file                                        |
+
+When deleting via `--pick`, the same flags as `clean` apply: `--force`, `--yes`,
+`--delete-branch`, and `--keep-claude-project`.
+
+#### Picking a worktree
+
+`--pick` opens a multi-select. What you can do next depends on how many you chose:
+
+- **exactly one** → _Open_ (prints its path) or _Delete_
+- **more than one** → _Delete_ only
+
+The prompts render on **stderr** and the opened path is the only thing on **stdout**, so the
+selection can be captured directly:
+
+```bash
+cd "$(worktree list --pick)"
+```
+
+Worth putting in your shell profile:
+
+```bash
+wt() { cd "$(worktree list --pick)" || return; }
+```
+
+Deleting through `--pick` writes its progress to stderr too, leaving stdout empty — so the
+`cd` above fails harmlessly instead of jumping somewhere unexpected.
+
+Bare `worktree list` is unaffected: it still prints tab-separated rows and stays pipeable.
+`--pick` requires a terminal and errors out otherwise.
 
 ### `worktree create`
 

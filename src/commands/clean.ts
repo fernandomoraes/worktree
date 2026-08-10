@@ -1,23 +1,16 @@
 import { defineCommand } from 'citty';
 
-import { collectWorktrees } from '@/commands/list.js';
-import { removeClaudeProject } from '@/lib/claude-projects.js';
 import { withExamples } from '@/lib/examples.js';
-import {
-  deleteBranch,
-  hasUncommittedChanges,
-  removeWorktree,
-} from '@/lib/git.js';
 import { promptConfirm, promptSelection } from '@/lib/prompts.js';
+import {
+  collectWorktrees,
+  removeWorktreeRow,
+  type WorktreeRow,
+} from '@/lib/worktrees.js';
 import { isInteractive } from '@/utils/is-interactive.js';
 import { writeLine } from '@/utils/write-line.js';
 
-type Candidate = Awaited<ReturnType<typeof collectWorktrees>>[number];
-
-const describeClaudeProjectRemoval = async (worktreePath: string) => {
-  const { path, removed } = await removeClaudeProject(worktreePath);
-  return removed ? path : 'none';
-};
+type Candidate = WorktreeRow;
 
 const matches = (candidate: Candidate, branch?: string) =>
   !branch ||
@@ -166,45 +159,21 @@ export const clean = withExamples(
         }
       }
 
-      let removed = 0;
-
       for (const candidate of selected) {
-        if (!args.force && (await hasUncommittedChanges(candidate.path))) {
-          throw new Error(
-            `Worktree has uncommitted changes: ${candidate.path}\n  Commit them, or re-run with --force.`
-          );
-        }
-
-        const repositoryPath = candidate.repositoryPath;
-
-        await removeWorktree({
-          repositoryPath,
-          worktreePath: candidate.path,
+        const result = await removeWorktreeRow(candidate, {
           force: args.force,
+          deleteBranch: args['delete-branch'],
+          keepClaudeProject: args['keep-claude-project'],
         });
 
-        const claudeProject = args['keep-claude-project']
-          ? 'kept'
-          : await describeClaudeProjectRemoval(candidate.path);
-
-        if (args['delete-branch']) {
-          await deleteBranch({
-            repositoryPath,
-            branch: candidate.branch,
-            force: args.force,
-          });
-        }
-
-        removed += 1;
-
         writeLine('removed worktree');
-        writeLine(`repository: ${candidate.repository}`);
-        writeLine(`branch: ${candidate.branch}`);
-        writeLine(`path: ${candidate.path}`);
-        writeLine(`claude_project: ${claudeProject}`);
+        writeLine(`repository: ${result.repository}`);
+        writeLine(`branch: ${result.branch}`);
+        writeLine(`path: ${result.path}`);
+        writeLine(`claude_project: ${result.claudeProject}`);
       }
 
-      writeLine(`removed: ${removed}`);
+      writeLine(`removed: ${selected.length}`);
     },
   }),
   [
