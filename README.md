@@ -30,8 +30,9 @@ The CLI is built for humans and agents at the same time:
   a missing flag when a TTY is attached; in a pipe or CI the same input is an actionable error,
   never a hanging prompt.
 - **stdout is only ever worktree paths.** Summaries, prompts and errors all go to stderr, in
-  every mode, so `cd "$(worktree create ...)"` works whether or not you pass `--human`.
-  `--human` adds prose beside the data; it never replaces it.
+  every mode, so `cd "$(worktree create ...)"` always works. `--verbose` adds detail beside
+  the data; it never replaces it. `--human` is a separate idea: it means "interact with me",
+  and only `list` has one.
 - **Idempotent.** Re-running `create` reports the existing worktree instead of failing;
   `clean` on an already-clean repo is a no-op.
 - **Safe by default.** Destructive commands support `--dry-run`, prompt before acting, and
@@ -97,7 +98,7 @@ Creates a worktree at `<worktreesPath>/<repository>/<name>` on a new branch.
 | `--base <branch>` | Start from an explicit branch instead of the configured one              |
 | `--no-fetch`      | Skip fetching the base branch from `origin`                              |
 | `--dry-run`       | Print what would be created without touching the filesystem              |
-| `--human`         | Print a readable summary instead of just the worktree path               |
+| `--verbose`       | Also report repository, branch and base on stderr                        |
 | `--config <path>` | Use a specific config file                                               |
 
 Run it with no naming flags and it asks how to name the worktree:
@@ -130,11 +131,11 @@ $ worktree create --repo vela --ticket ABC-123
 $ cd "$(worktree create --repo vela --ticket ABC-123)"
 ```
 
-`--human` adds a summary on stderr. The path is still the only thing on stdout, so the `cd`
+`--verbose` adds a summary on stderr. The path is still the only thing on stdout, so the `cd`
 form keeps working:
 
 ```
-$ worktree create --repo vela --ticket ABC-123 --human
+$ worktree create --repo vela --ticket ABC-123 --verbose
 created worktree                                        <- stderr
 repository: vela                                        <- stderr
 branch: feature/ABC-123-fix-login-redirect              <- stderr
@@ -159,7 +160,7 @@ Removes worktrees and, unless told otherwise, their Claude Code project director
 | `--force`               | Remove even with uncommitted changes                  |
 | `--yes`                 | Skip the confirmation prompt                          |
 | `--dry-run`             | Print what would be removed without removing anything |
-| `--human`               | Also print a readable summary on stderr               |
+| `--verbose`             | Also report each removed worktree on stderr           |
 | `--config <path>`       | Use a specific config file                            |
 
 Like `create`, stdout is just the removed paths:
@@ -170,10 +171,10 @@ $ worktree clean --repo vela --all --yes
 /Users/you/worktrees/vela/ABC-130-patch
 ```
 
-`--human` adds the detail on stderr:
+`--verbose` adds the detail on stderr:
 
 ```
-$ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes --human
+$ worktree clean --repo vela --branch feature/ABC-123-fix-login-redirect --yes --verbose
 removed worktree                                        <- stderr
 repository: vela                                        <- stderr
 branch: feature/ABC-123-fix-login-redirect              <- stderr

@@ -187,10 +187,10 @@ export const create = withExamples(
           'Print what would be created without touching the filesystem',
         default: false,
       },
-      human: {
+      verbose: {
         type: 'boolean',
         description:
-          'Print a readable summary instead of just the worktree path',
+          'Also report the repository, branch and base branch on stderr',
         default: false,
       },
       config: {
@@ -213,9 +213,9 @@ export const create = withExamples(
       const worktreePath = join(worktreesRoot(config), repository.name, name);
 
       // stdout carries the path and nothing else, so `cd "$(...)"` works in
-      // either mode; --human adds a summary alongside it, on stderr.
+      // either mode; --verbose adds a summary alongside it, on stderr.
       const report = (status: string, base: string) => {
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine(status);
           writeStderrLine(`repository: ${repository.name}`);
           writeStderrLine(`branch: ${branch}`);
@@ -266,7 +266,7 @@ export const create = withExamples(
   [
     'worktree create --repo vela                    # pick a ticket from your current sprint',
     'worktree create --repo vela --ticket ABC-123   # skip the picker',
-    'worktree create --repo vela --name "fix login redirect" --human',
+    'worktree create --repo vela --name "fix login redirect" --verbose',
     'worktree create --repo vela --ticket ABC-123 --type hotfix',
     'cd "$(worktree create --repo vela --ticket ABC-123)"',
     'worktree create --repo ./path/to/repo --name spike --dry-run',

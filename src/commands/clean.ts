@@ -110,10 +110,9 @@ export const clean = withExamples(
         description: 'Print what would be removed without removing anything',
         default: false,
       },
-      human: {
+      verbose: {
         type: 'boolean',
-        description:
-          'Print a readable summary instead of just the removed worktree paths',
+        description: 'Also report each removed worktree in full on stderr',
         default: false,
       },
       config: {
@@ -129,7 +128,7 @@ export const clean = withExamples(
       });
 
       if (candidates.length === 0) {
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine('no worktrees to clean');
         }
         return;
@@ -142,26 +141,26 @@ export const clean = withExamples(
       });
 
       if (selected.length === 0) {
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine('no worktrees to clean');
         }
         return;
       }
 
       if (args['dry-run']) {
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine(`would remove ${selected.length} worktree(s)`);
         }
 
         for (const candidate of selected) {
-          if (args.human) {
+          if (args.verbose) {
             writeStderrLine(`${candidate.repository}  ${candidate.branch}`);
           }
 
           writeLine(candidate.path);
         }
 
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine('no changes made');
         }
 
@@ -174,7 +173,7 @@ export const clean = withExamples(
         );
 
         if (!confirmed) {
-          if (args.human) {
+          if (args.verbose) {
             writeStderrLine('aborted');
           }
           return;
@@ -188,7 +187,7 @@ export const clean = withExamples(
           keepClaudeProject: args['keep-claude-project'],
         });
 
-        if (args.human) {
+        if (args.verbose) {
           writeStderrLine('removed worktree');
           writeStderrLine(`repository: ${result.repository}`);
           writeStderrLine(`branch: ${result.branch}`);
@@ -198,7 +197,7 @@ export const clean = withExamples(
         writeLine(result.path);
       }
 
-      if (args.human) {
+      if (args.verbose) {
         writeStderrLine(`removed: ${selected.length}`);
       }
     },
@@ -206,7 +205,7 @@ export const clean = withExamples(
   [
     'worktree clean --repo vela --branch feature/ABC-123',
     'worktree clean --repo vela --all --dry-run',
-    'worktree clean --repo vela --all --yes --delete-branch --human',
+    'worktree clean --repo vela --all --yes --delete-branch --verbose',
     'worktree clean                       # interactive multi-select',
   ]
 );
