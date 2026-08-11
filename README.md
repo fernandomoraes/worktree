@@ -244,7 +244,7 @@ wt() {
       dest=$(command worktree "$@") || return
       [[ -n "$dest" ]] || return 0
       [[ -d "$dest" ]] || { printf '%s\n' "$dest"; return 0; }
-      cd -- "$dest"
+      cd -- "$dest" || return
       ;;
     *)
       command worktree "$@"
@@ -274,9 +274,29 @@ Why each guard is there:
   it, `cd ""` would drop you in `$HOME`.
 - `[[ -d "$dest" ]]` covers `--dry-run`, whose path does not exist yet, so it prints instead.
 - `command` skips the function itself, avoiding recursion if you also alias `worktree`.
+- `|| return` on the `cd` stops the function before anything you append below it runs.
 
 Prompts stay colourful inside the function even though `$( )` captures stdout. Set `NO_COLOR`
 to turn that off.
+
+### Node version managers
+
+A fresh worktree is usually the first time a given `.nvmrc` is seen on your machine, and most
+version managers only _switch_ to versions already installed — they do not install on `cd`. The
+switch then fails, and if the hook is quiet about it you land in the worktree still running the
+previous directory's Node, with nothing on screen to say so.
+
+Install-if-missing where you jump. With [fnm](https://github.com/Schniz/fnm):
+
+```zsh
+      cd -- "$dest" || return
+      command -v fnm >/dev/null && fnm use --install-if-missing --silent-if-unchanged
+      ;;
+```
+
+The equivalents are `nvm install` (which also selects, unlike `nvm use`) and
+`asdf install nodejs`. Either way this only downloads on the first worktree cut against a new
+version; afterwards it is the same no-op as the `cd` hook.
 
 ## Configuration
 
